@@ -28,7 +28,7 @@ class RobotCore:
             print("警告：未找到地址簿配置文件，部分功能可能无法使用。")
 
         # 默认参数文件路径
-        self.default_parameter_json = "Communication/DefaultRobotParameters.json"
+        self.default_parameter_json = "Config/DefaultRobotParameters.json"
 
         # 创建 ModBusService（async 管理 I/O 队列）
         self._service = ModBusService(self.communicator, self._address_book or {})
@@ -61,8 +61,8 @@ class RobotCore:
     def _load_address_book(self) -> Optional[dict]:
         """加载地址簿的工具方法"""
         try_paths = [
-            'Communication/modbus_address_book.compact_win.json',
-            'Json/modbus_address_book.compact.json' # 兼容 C# 路径习惯
+            'Config/modbus_address_book.compact_win.json',
+            'Config/modbus_address_book.compact.json' # 兼容 C# 路径习惯
         ]
         for path in try_paths:
             if os.path.exists(path):
@@ -136,7 +136,7 @@ class RobotCore:
                 await self.SetControlMode(ControlMode.Calibration) # 或 Idel
                 
                 # 4. 下发默认参数 (如果需要覆盖设备参数)
-                # await self.RobotSetParameters(self.robot_parameter)
+                await self.RobotSetParameters(self.robot_parameter)
                 
                 print("机器人逻辑初始化完成！")
             except Exception as e:
@@ -146,7 +146,7 @@ class RobotCore:
             asyncio.run_coroutine_threadsafe(init_tasks(), self._loop)
 
     # ------------------------------
-    # 核心控制方法
+    # 核心控制方法 
     # ------------------------------
 
     async def RobotReset(self) -> None:
@@ -312,7 +312,8 @@ class RobotCore:
             await s.write_real("Parameters.TCP_Jog_Linear_Velocity", parameters.TCPJogLinearVelocity)
             await s.write_real("Parameters.TCP_Jog_Angular_Velocity", parameters.TCPJogAngularVelocity)
             await s.write_real("Parameters.TCP_Inch_Linear_Distance", parameters.TCPInchDistance)
-            # C# 还有 TCPInchAngularDistance，Python Basic.py 里似乎没定义，如果地址簿有需补充
+            
+            # TODO C# 还有 TCPInchAngularDistance，Python Basic.py 里似乎没定义，如果地址簿有需补充
 
             # TCP Target / Mid Pose
             for i, val in enumerate(parameters.TCPTargetPose):
@@ -320,7 +321,7 @@ class RobotCore:
             for i, val in enumerate(parameters.TCPMidPose):
                 await s.write_real("Parameters.TCP_Mid_Pose", float(val), i+1)
 
-            # TCP Ref
+            # TCP Reference
             await s.write_real("Parameters.TCP_Refference_Linear_Velocity", parameters.TCPReferenceLinearVelocity)
             await s.write_real("Parameters.TCP_Refference_Linear_Acceleration", parameters.TCPReferenceLinearAcceleration)
             await s.write_real("Parameters.TCP_Refference_Linear_Deceleration", parameters.TCPReferenceLinearDeceleration)
@@ -349,36 +350,15 @@ class RobotCore:
 
     def ReadRobotStatus(self) -> None:
         """周期性读取机器人状态（定时器回调）"""
-        import sys
-        sys.stdout.flush()
-        
         if self.connected and self._loop:
             async def async_read_status():
-                import sys
-                # print(">>> TRACE-ASYNC: async_read_status started <<<", flush=True)
-                sys.stdout.flush()
                 try:
                     # 使用 Service 的 snapshot 机制
                     new_status = await self._service.read_snapshot()
-                    result_type = type(new_status).__name__ if new_status else 'None'
-                    # print(f">>> TRACE-ASYNC: read_snapshot returned: {result_type} <<<", flush=True)
-                    sys.stdout.flush()
-                    
                     if new_status:
                         self.robot_status = new_status
-                    else:
-                        print("=" * 60, flush=True)
-                        print(">>> POLL FAILED: read_snapshot returned None <<<", flush=True)
-                        print(">>> REASON: Modbus read failed or address config error <<<", flush=True)
-                        print("=" * 60, flush=True)
-                        sys.stdout.flush()
                 except Exception as e:
-                    import traceback
-                    print("=" * 60, flush=True)
-                    print(f">>> POLL EXCEPTION: {type(e).__name__}: {e} <<<", flush=True)
-                    traceback.print_exc()
-                    print("=" * 60, flush=True)
-                    sys.stdout.flush()
+                    pass
 
             asyncio.run_coroutine_threadsafe(async_read_status(), self._loop)
         
@@ -441,7 +421,7 @@ class RobotCore:
                 "Mode": 0 # ModBusService暂未解析Mode，给默认值或需补充读取
             }
 
-            # --- 构建 AirLock 部分 (新版协议暂无，给默认值防止报错) ---
+            # --- 构建 AirLock 部分 ---
             airlock_data = {
                 "locked": False,
                 "pressure": 0.0
