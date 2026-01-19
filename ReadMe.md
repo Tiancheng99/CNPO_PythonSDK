@@ -20,13 +20,7 @@ $env:PYTHONUTF8=1; pip install -e .
 1. **moveJ 读取 CSV 并逐个发送**  
    运行前先确保 TODO 的内容（CSV 文件和 IP）修改正确
    ```bash
-   python Tests\moveJ_test.py
-   ```
-
-2. **moveJ 手动输入任意角度**  
-   运行前确保 TP 配置正确
-   ```bash
-   python Tests\moveJ_test_1.py
+   python Tests\moveJ.py
    ```
 
 ---
