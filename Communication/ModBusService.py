@@ -8,7 +8,6 @@
 """
 
 import asyncio
-import logging
 from typing import Dict, Callable, Optional, Any, List, Tuple
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
@@ -130,13 +129,13 @@ class ModBusService:
         if self._queue:
             await self._queue.put(None)
         if self._consumer_task:
-            try: await asyncio.wait_for(self._consumer_task, timeout=2.0)
+            try: await asyncio.wait_for(self._consumer_task, timeout=3.0)
             except: pass
         try:
             if self._loop: await self._loop.run_in_executor(None, self._com.disconnect)
         except: pass
 
-    # --- 通用写操作 ---
+    # --- ModBusService类 通用 写操作 ---
     async def write_bool(self, key: str, value: bool, *idx: int):
         return await self._enqueue(lambda: self._com.write_bool(self._book, key, value, *idx))
 
@@ -149,7 +148,7 @@ class ModBusService:
     async def write_dword(self, key: str, value: int, *idx: int):
         return await self._enqueue(lambda: self._com.write_dword(self._book, key, value, *idx))
     
-    # --- 通用读操作 ---
+    # --- ModBusService类 通用 读操作 ---
     async def read_bool(self, key: str, *idx: int) -> bool:
         return await self._enqueue(lambda: self._com.read_bool(self._book, key, *idx))
     
@@ -251,9 +250,25 @@ class ModBusService:
             def get_addr(key: str, *idx: int) -> int:
                 return AddressBook.address_of(self._book, key, *idx)[1]
 
-            # 1. 动态获取起始地址
-            flags_start = get_addr("Flags.Initialized")
-            status_start = get_addr("Status.Error_ID")
+            # 1. 自动搜索各区域的最小地址（无需硬编码）
+            def find_area_start(area_type: str, is_bool: bool = False) -> int:
+                """搜索指定区域的最小地址"""
+                min_addr = float('inf')
+                for key, entry in self._book.items():
+                    # 筛选区域和类型匹配的条目
+                    if entry.area == area_type:
+                        is_entry_bool = entry.baseType and entry.baseType.upper() == "BOOL"
+                        if is_entry_bool == is_bool:
+                            addr_key = entry.bitBase if is_bool else entry.regBase
+                            if addr_key is not None and addr_key < min_addr:
+                                min_addr = addr_key
+                return int(min_addr) if min_addr != float('inf') else 0
+
+            # Flags 区域（布尔类型，Discrete Inputs）
+            flags_start = find_area_start("InputStatus", is_bool=True)
+
+            # Status 区域（数值类型，Input Registers）
+            status_start = find_area_start("InputRegisters", is_bool=False)
 
             # 2. 批量读取数据 (分块处理)
             # Discrete Inputs (Flags)
@@ -293,31 +308,113 @@ class ModBusService:
         except Exception as e:
             if "10053" in str(e):
                 self._com.is_connected = False
-                print("检测到 PLC 断开连接 (10053)")
+                print("检测到网络断开连接 (10053)")
             return None
 
     def _read_parameters_once_safe(self) -> Optional[RobotParameters]:
-        """批量读取参数（同样使用分包逻辑）"""
+        """批量读取所有机器人参数（同样使用分包逻辑）"""
         try:
-            start_key = "Parameters.DH_Parameters"
-            # DH 是二维数组，取第一个元素 [1,1] 的地址
-            p_start = AddressBook.address_of(self._book, start_key, 1, 1)[1]
+            # 获取 HoldingRegisters 的起始地址
+            def find_holding_registers_start() -> int:
+                """搜索 HoldingRegisters 区域的最小地址"""
+                min_addr = float('inf')
+                for entry in self._book.values():
+                    if entry.area == "HoldingRegisters" and entry.regBase is not None and entry.regBase < min_addr:
+                        min_addr = entry.regBase
+                return int(min_addr) if min_addr != float('inf') else 0
+
+            p_start = find_holding_registers_start()
             
-            # TODO 读取 300 个寄存器，分 3 次读取（120 + 120 + 60）
-            regs = self._com.read_holding_registers_block(p_start, 300)
-            if not regs: return None
+            # 读取足够多的寄存器（分块处理以绕过 125 限制）
+            regs_part1 = self._com.read_holding_registers_block(p_start, 125)
+            regs_part2 = self._com.read_holding_registers_block(p_start + 125, 125)
+            regs_part3 = self._com.read_holding_registers_block(p_start + 250, 100)
+            all_regs = regs_part1 + regs_part2 + regs_part3
+            
+            if not all_regs: return None
+
+            def get_addr(key: str, *idx: int) -> int:
+                return AddressBook.address_of(self._book, key, *idx)[1]
 
             p = RobotParameters()
-            # 解析 DH (6x4)
+            
+            # 1. DH 参数 (6x4)
             for i in range(6):
                 for j in range(4):
-                    addr = AddressBook.address_of(self._book, start_key, i+1, j+1)[1]
-                    p.DHParameters[i][j] = self._get_f32(regs, p_start, addr)
+                    addr = get_addr("Parameters.DH_Parameters", i+1, j+1)
+                    p.DHParameters[i][j] = self._get_f32(all_regs, p_start, addr)
             
-            # 其他参数解析... (篇幅原因略，逻辑同上：传入 regs, p_start 和动态获取的 addr)
+            # 2. 校准位置 (6个 REAL)
+            for i in range(6):
+                addr = get_addr("Parameters.CalibrationJointPositions", i+1)
+                p.CalibrationJointPositions[i] = self._get_f32(all_regs, p_start, addr)
+            
+            # 3. 覆盖率
+            p.OverrideRatio = self._get_f32(all_regs, p_start, get_addr("Parameters.Override"))
+            
+            # 4. 关节 Jog 速度 (6个 REAL)
+            for i in range(6):
+                addr = get_addr("Parameters.Joint_Jog_Velocity", i+1)
+                p.JointJogVelocity[i] = self._get_f32(all_regs, p_start, addr)
+            
+            # 5. 英寸距离 (6个 REAL)
+            for i in range(6):
+                addr = get_addr("Parameters.Inch_Distance", i+1)
+                p.InchDistance[i] = self._get_f32(all_regs, p_start, addr)
+            
+            # 6. 关节目标位置 (6个 REAL)
+            for i in range(6):
+                addr = get_addr("Parameters.Joint_Target_Position", i+1)
+                p.JointTargetPosition[i] = self._get_f32(all_regs, p_start, addr)
+            
+            # 7. 关节参考速度/加速度/Jerk (各6个 REAL)
+            for i in range(6):
+                p.JointReferenceVelocity[i] = self._get_f32(all_regs, p_start, get_addr("Parameters.Joint_Refference_Velocity", i+1))
+                p.JointReferenceAcceleration[i] = self._get_f32(all_regs, p_start, get_addr("Parameters.Joint_Refference_Acceleration", i+1))
+                p.JointReferenceJerk[i] = self._get_f32(all_regs, p_start, get_addr("Parameters.Joint_Refference_Jerk", i+1))
+            
+            # 8. MoveJ 参数 (3个 REAL)
+            p.MoveJReferenceVelocity = self._get_f32(all_regs, p_start, get_addr("Parameters.MoveJ_Refference_Velocity"))
+            p.MoveJReferenceAcceleration = self._get_f32(all_regs, p_start, get_addr("Parameters.MoveJ_Refference_Acceleration"))
+            p.MoveJReferenceDeceleration = self._get_f32(all_regs, p_start, get_addr("Parameters.MoveJ_Refference_Deceleration"))
+            
+            # 9. TCP Jog 参数
+            p.TCPJogLinearVelocity = self._get_f32(all_regs, p_start, get_addr("Parameters.TCP_Jog_Linear_Velocity"))
+            p.TCPJogAngularVelocity = self._get_f32(all_regs, p_start, get_addr("Parameters.TCP_Jog_Angular_Velocity"))
+            
+            # 10. TCP Inch 参数
+            p.TCPInchDistance = self._get_f32(all_regs, p_start, get_addr("Parameters.TCP_Inch_Linear_Distance"))
+            p.TCPInchAngularDistance = self._get_f32(all_regs, p_start, get_addr("Parameters.TCP_Inch_Angular_Distance"))
+            
+            # 11. TCP 目标/中间位姿 (各6个 REAL)
+            for i in range(6):
+                p.TCPTargetPose[i] = self._get_f32(all_regs, p_start, get_addr("Parameters.TCP_Target_Pose", i+1))
+                p.TCPMidPose[i] = self._get_f32(all_regs, p_start, get_addr("Parameters.TCP_Mid_Pose", i+1))
+            
+            # 12. TCP 参考速度/加速度/减速度 (线性/角速度各3个)
+            p.TCPReferenceLinearVelocity = self._get_f32(all_regs, p_start, get_addr("Parameters.TCP_Refference_Linear_Velocity"))
+            p.TCPReferenceLinearAcceleration = self._get_f32(all_regs, p_start, get_addr("Parameters.TCP_Refference_Linear_Acceleration"))
+            p.TCPReferenceLinearDeceleration = self._get_f32(all_regs, p_start, get_addr("Parameters.TCP_Refference_Linear_Deceleration"))
+            p.TCPReferenceAngularVelocity = self._get_f32(all_regs, p_start, get_addr("Parameters.TCP_Refference_Angular_Velocity"))
+            p.TCPReferenceAngularAcceleration = self._get_f32(all_regs, p_start, get_addr("Parameters.TCP_Refference_Angular_Acceleration"))
+            p.TCPReferenceAngularDeceleration = self._get_f32(all_regs, p_start, get_addr("Parameters.TCP_Refference_Angular_Deceleration"))
+            
+            # 13. 末端负载参数
+            p.LoadMass = self._get_f32(all_regs, p_start, get_addr("Parameters.LoadMass"))
+            for i in range(3):
+                p.LoadCOG[i] = self._get_f32(all_regs, p_start, get_addr("Parameters.LoadCOG", i+1))
+            
+            # 14. Tip (末端偏移，6个 REAL)
+            for i in range(6):
+                p.Tip[i] = self._get_f32(all_regs, p_start, get_addr("Parameters.Tip", i+1))
+            
+            print("✅ 所有参数读取成功")
             return p
+            
         except Exception as e:
-            print(f"读取参数失败: {e}")
+            print(f"❌ 读取参数失败: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     # --- 辅助解析函数 (对齐偏移量) ---
