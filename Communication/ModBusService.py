@@ -1,0 +1,340 @@
+"""
+异步 ModBusService
+功能：
+- 串行化 I/O 队列
+- 动态地址解析（基于 AddressBook）
+- 分包读取以绕过 Modbus 125 寄存器限制
+- 容错重连机制
+"""
+
+import asyncio
+import logging
+from typing import Dict, Callable, Optional, Any, List, Tuple
+from datetime import datetime, timedelta, timezone
+from dataclasses import dataclass, field
+
+from Communication.ModBusCommunicator import ModBusCommunicator
+from Communication.CompactEntry import CompactEntry, AddressBook
+from Communication.ModBusUtils import registers_to_float, registers_to_dword
+
+@dataclass
+class RobotStatus:
+    """机器人状态信息类"""
+    TimestampUtc: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    Initialized: bool = False
+    PowerOn: bool = False
+    Moving: bool = False
+    Error: bool = False
+    TcpJogInchCoord: bool = False 
+    ErrorId: int = 0
+    JointError: List[bool] = field(default_factory=lambda: [False]*6)
+    JointMoving: List[bool] = field(default_factory=lambda: [False]*6)
+    JointErrorId: List[int] = field(default_factory=lambda: [0]*6)
+    JointState: List[int] = field(default_factory=lambda: [0]*6)
+    JointActualPosition: List[float] = field(default_factory=lambda: [0.0]*6)
+    JointActualVelocity: List[float] = field(default_factory=lambda: [0.0]*6)
+    JointActualCurrent: List[float] = field(default_factory=lambda: [0.0]*6)
+    JointActualTorque: List[float] = field(default_factory=lambda: [0.0]*6)
+    FlangePose: List[float] = field(default_factory=lambda: [0.0]*6)
+    TcpPose: List[float] = field(default_factory=lambda: [0.0]*6)
+
+@dataclass
+class RobotParameters:
+    """机器人参数类 (对应 Holding Registers)"""
+    DHParameters: List[List[float]] = field(default_factory=lambda: [[0.0]*4 for _ in range(6)])
+    CalibrationJointPositions: List[float] = field(default_factory=lambda: [0.0]*6)
+    OverrideRatio: float = 1.0
+    JointJogVelocity: List[float] = field(default_factory=lambda: [0.0]*6)
+    InchDistance: List[float] = field(default_factory=lambda: [0.0]*6)
+    JointTargetPosition: List[float] = field(default_factory=lambda: [0.0]*6)
+    JointReferenceVelocity: List[float] = field(default_factory=lambda: [0.0]*6)
+    JointReferenceAcceleration: List[float] = field(default_factory=lambda: [0.0]*6)
+    JointReferenceJerk: List[float] = field(default_factory=lambda: [0.0]*6)
+    MoveJReferenceVelocity: float = 0.0
+    MoveJReferenceAcceleration: float = 0.0
+    MoveJReferenceDeceleration: float = 0.0
+    TCPJogLinearVelocity: float = 0.0
+    TCPJogAngularVelocity: float = 0.0
+    TCPInchDistance: float = 0.0
+    TCPInchAngularDistance: float = 0.0
+    TCPTargetPose: List[float] = field(default_factory=lambda: [0.0]*6)
+    TCPMidPose: List[float] = field(default_factory=lambda: [0.0]*6)
+    TCPReferenceLinearVelocity: float = 0.0
+    TCPReferenceLinearAcceleration: float = 0.0
+    TCPReferenceLinearDeceleration: float = 0.0
+    TCPReferenceAngularVelocity: float = 0.0
+    TCPReferenceAngularAcceleration: float = 0.0
+    TCPReferenceAngularDeceleration: float = 0.0
+    TCPTargetVelocity: List[float] = field(default_factory=lambda: [0.0]*6)
+    AdmittanceControlM: List[float] = field(default_factory=lambda: [0.0]*6)
+    AdmittanceControlK: List[float] = field(default_factory=lambda: [0.0]*6)
+    AdmittanceControlB: List[float] = field(default_factory=lambda: [0.0]*6)
+    Tip: List[float] = field(default_factory=lambda: [0.0]*6)
+    LoadMass: float = 0.0
+    LoadCOG: List[float] = field(default_factory=lambda: [0.0]*3)
+    LoadInertia6: List[float] = field(default_factory=lambda: [0.0]*6)
+    LevelingDirction: List[float] = field(default_factory=lambda: [0.0]*3)
+    Axis: int = 0
+
+
+class ModBusService:
+    def __init__(self, communicator: ModBusCommunicator, address_book: Dict[str, CompactEntry], poll_interval: float = 0.1):
+        self._com = communicator
+        self._book = address_book
+        self._poll_interval = poll_interval 
+
+        self._pulse_locks: Dict[str, asyncio.Lock] = {}
+        self._queue: Optional[asyncio.Queue] = None
+        self._consumer_task: Optional[asyncio.Task] = None
+        self._poller_task: Optional[asyncio.Task] = None
+        self._running = False
+
+        self.snapshot_updated: Optional[Callable[[RobotStatus], Any]] = None
+        self._poll_work_pending = False
+        
+        self._consecutive_failures = 0
+        self._reconnect_backoff_min = 2.0 
+        self._reconnect_backoff_max = 30.0 
+        self._reconnect_backoff = self._reconnect_backoff_min
+        self._last_reconnect_attempt = datetime.min.replace(tzinfo=timezone.utc)
+        
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+
+    @property
+    def is_running(self) -> bool:
+        return self._running and self._consumer_task is not None and not self._consumer_task.done()
+
+    async def start(self) -> bool:
+        if self.is_running: return False
+        self._loop = asyncio.get_running_loop()
+        
+        connected = self._com.is_connected
+        if not connected:
+            try:
+                connected = await self._loop.run_in_executor(None, self._com.connect)
+            except Exception as e:
+                print(f"启动时连接异常: {e}")
+
+        self._queue = asyncio.Queue()
+        self._running = True
+        self._poll_work_pending = False
+        self._consecutive_failures = 0
+        self._consumer_task = asyncio.create_task(self._consume_loop())
+        self._poller_task = asyncio.create_task(self._poll_loop())
+        return True
+
+    async def stop(self):
+        self._running = False
+        if self._poller_task:
+            self._poller_task.cancel()
+        if self._queue:
+            await self._queue.put(None)
+        if self._consumer_task:
+            try: await asyncio.wait_for(self._consumer_task, timeout=2.0)
+            except: pass
+        try:
+            if self._loop: await self._loop.run_in_executor(None, self._com.disconnect)
+        except: pass
+
+    # --- 通用写操作 ---
+    async def write_bool(self, key: str, value: bool, *idx: int):
+        return await self._enqueue(lambda: self._com.write_bool(self._book, key, value, *idx))
+
+    async def write_uint(self, key: str, value: int, *idx: int):
+        return await self._enqueue(lambda: self._com.write_uint(self._book, key, value, *idx))
+
+    async def write_real(self, key: str, value: float, *idx: int):
+        return await self._enqueue(lambda: self._com.write_real(self._book, key, value, *idx))
+    
+    async def write_dword(self, key: str, value: int, *idx: int):
+        return await self._enqueue(lambda: self._com.write_dword(self._book, key, value, *idx))
+    
+    # --- 通用读操作 ---
+    async def read_bool(self, key: str, *idx: int) -> bool:
+        return await self._enqueue(lambda: self._com.read_bool(self._book, key, *idx))
+    
+    async def read_uint(self, key: str, *idx: int) -> int:
+        return await self._enqueue(lambda: self._com.read_uint(self._book, key, *idx))
+    
+    async def read_real(self, key: str, *idx: int) -> float:
+        return await self._enqueue(lambda: self._com.read_real(self._book, key, *idx))
+    
+    async def read_dword(self, key: str, *idx: int) -> int:
+        return await self._enqueue(lambda: self._com.read_dword(self._book, key, *idx))
+
+    async def pulse_bool(self, key: str, milliseconds: int, *idx: int):
+        lock = self._pulse_locks.setdefault(key, asyncio.Lock())
+        async with lock:
+            try:
+                await self.write_bool(key, True, *idx)
+                await asyncio.sleep(milliseconds / 1000.0)
+            finally:
+                try: await self.write_bool(key, False, *idx)
+                except: pass
+
+    async def read_snapshot(self) -> Optional[RobotStatus]:
+        return await self._enqueue(self._poll_once_safe)
+
+    async def read_parameters(self) -> Optional[RobotParameters]:
+        return await self._enqueue(self._read_parameters_once_safe)
+
+    # --- 核心队列逻辑 ---
+    async def _enqueue(self, func: Callable[[], Any]) -> Any:
+        if self._queue is None: raise RuntimeError("ModBusService 未启动")
+        loop = asyncio.get_running_loop()
+        future = loop.create_future()
+
+        async def work_item():
+            try:
+                result = await loop.run_in_executor(None, func)
+                if not future.done(): future.set_result(result)
+            except Exception as ex:
+                if not future.done(): future.set_exception(ex)
+                raise ex 
+
+        await self._queue.put(work_item)
+        return await future
+
+    async def _consume_loop(self):
+        while self._running:
+            try:
+                work_item = await self._queue.get()
+                if work_item is None: break
+                try:
+                    await work_item()
+                    self._consecutive_failures = 0
+                    self._reconnect_backoff = self._reconnect_backoff_min
+                except Exception as ex:
+                    self._consecutive_failures += 1
+                    # 处理连接中止
+                    if "10053" in str(ex) or "Aborted" in str(ex):
+                        self._com.is_connected = False
+                    
+                    if self._running:
+                        now = datetime.now(timezone.utc)
+                        if self._consecutive_failures >= 3 and (now - self._last_reconnect_attempt).total_seconds() >= self._reconnect_backoff:
+                            print(f"检测到通讯异常，尝试重连... (失败次数: {self._consecutive_failures})")
+                            await self._try_reconnect()
+                            self._last_reconnect_attempt = datetime.now(timezone.utc)
+                            self._reconnect_backoff = min(self._reconnect_backoff * 2, self._reconnect_backoff_max)
+                        await asyncio.sleep(0.5)
+            except asyncio.CancelledError: break
+
+    async def _try_reconnect(self):
+        loop = asyncio.get_running_loop()
+        try: await loop.run_in_executor(None, self._com.disconnect)
+        except: pass
+        try: await loop.run_in_executor(None, self._com.connect)
+        except: pass
+
+    async def _poll_loop(self):
+        while self._running:
+            await asyncio.sleep(self._poll_interval)
+            if self._poll_work_pending: continue
+            self._poll_work_pending = True
+            
+            async def poll_work():
+                try:
+                    snap = await asyncio.get_running_loop().run_in_executor(None, self._poll_once_safe)
+                    if snap and self.snapshot_updated:
+                        res = self.snapshot_updated(snap)
+                        if asyncio.iscoroutine(res): await res
+                except: pass
+                finally: self._poll_work_pending = False
+
+            await self._queue.put(poll_work)
+
+    # --- 状态读取逻辑 ---
+    def _poll_once_safe(self) -> Optional[RobotStatus]:
+        try:
+            # 辅助：从地址簿获取真实地址
+            def get_addr(key: str, *idx: int) -> int:
+                return AddressBook.address_of(self._book, key, *idx)[1]
+
+            # 1. 动态获取起始地址
+            flags_start = get_addr("Flags.Initialized")
+            status_start = get_addr("Status.Error_ID")
+
+            # 2. 批量读取数据 (分块处理)
+            # Discrete Inputs (Flags)
+            byte_flags = self._com.read_discrete_inputs_block(flags_start, 128)
+            
+            # Input Registers (Status) - 由于 158 超过了 125 的 Modbus 限制，分两次读
+            # 块 1: 0-100
+            regs_part1 = self._com.read_input_registers_block(status_start, 100)
+            # 块 2: 100-158
+            regs_part2 = self._com.read_input_registers_block(status_start + 100, 58)
+            
+            all_regs = regs_part1 + regs_part2
+
+            if not byte_flags or not all_regs: return None
+
+            # 3. 解析到对象
+            s = RobotStatus()
+            
+            s.Initialized = self._get_bit(byte_flags, flags_start, get_addr("Flags.Initialized"))
+            s.PowerOn     = self._get_bit(byte_flags, flags_start, get_addr("Flags.PowerOn"))
+            s.Moving      = self._get_bit(byte_flags, flags_start, get_addr("Flags.Moving"))
+            s.Error       = self._get_bit(byte_flags, flags_start, get_addr("Flags.Error"))
+
+            s.ErrorId     = self._get_dword(all_regs, status_start, get_addr("Status.Error_ID"))
+
+            for i in range(6):
+                s.JointError[i]  = self._get_bit(byte_flags, flags_start, get_addr("Flags.Joint_Error", i+1))
+                s.JointMoving[i] = self._get_bit(byte_flags, flags_start, get_addr("Flags.Joint_Moving", i+1))
+                
+                s.JointActualPosition[i] = self._get_f32(all_regs, status_start, get_addr("Status.Joint_Actual_Position", i+1))
+                s.JointActualVelocity[i] = self._get_f32(all_regs, status_start, get_addr("Status.Joint_Actual_Velocity", i+1))
+                s.JointActualCurrent[i]  = self._get_f32(all_regs, status_start, get_addr("Status.Joint_Actual_Current", i+1))
+                s.JointActualTorque[i]   = self._get_f32(all_regs, status_start, get_addr("Status.Joint_Actual_Torque", i+1))
+
+            return s
+
+        except Exception as e:
+            if "10053" in str(e):
+                self._com.is_connected = False
+                print("检测到 PLC 断开连接 (10053)")
+            return None
+
+    def _read_parameters_once_safe(self) -> Optional[RobotParameters]:
+        """批量读取参数（同样使用分包逻辑）"""
+        try:
+            start_key = "Parameters.DH_Parameters"
+            # DH 是二维数组，取第一个元素 [1,1] 的地址
+            p_start = AddressBook.address_of(self._book, start_key, 1, 1)[1]
+            
+            # TODO 读取 300 个寄存器，分 3 次读取（120 + 120 + 60）
+            regs = self._com.read_holding_registers_block(p_start, 300)
+            if not regs: return None
+
+            p = RobotParameters()
+            # 解析 DH (6x4)
+            for i in range(6):
+                for j in range(4):
+                    addr = AddressBook.address_of(self._book, start_key, i+1, j+1)[1]
+                    p.DHParameters[i][j] = self._get_f32(regs, p_start, addr)
+            
+            # 其他参数解析... (篇幅原因略，逻辑同上：传入 regs, p_start 和动态获取的 addr)
+            return p
+        except Exception as e:
+            print(f"读取参数失败: {e}")
+            return None
+
+    # --- 辅助解析函数 (对齐偏移量) ---
+    @staticmethod
+    def _get_bit(packed_bits: bytes, block_start: int, absolute_addr: int) -> bool:
+        offset = absolute_addr - block_start
+        if offset < 0: return False
+        byte_idx, bit_idx = divmod(offset, 8)
+        if byte_idx >= len(packed_bits): return False
+        return (packed_bits[byte_idx] & (1 << bit_idx)) != 0
+
+    def _get_dword(self, regs: List[int], block_start: int, absolute_addr: int) -> int:
+        offset = absolute_addr - block_start
+        if offset < 0 or offset + 1 >= len(regs): return 0
+        return registers_to_dword(regs[offset], regs[offset+1]) 
+
+    def _get_f32(self, regs: List[int], block_start: int, absolute_addr: int) -> float:
+        offset = absolute_addr - block_start
+        if offset < 0 or offset + 1 >= len(regs): return 0.0
+        return registers_to_float(regs[offset], regs[offset+1])

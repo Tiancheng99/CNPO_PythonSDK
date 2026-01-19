@@ -1,0 +1,178 @@
+{
+  "DHParameters": [
+    [ 0.0, 0.0, 157.8301, 0.0 ],
+    [ 0.0, 1.570796, 0.0, 0 ],
+    [ -270.1666, 0.0, 0.0, 0 ],
+    [ -270.506, 0, 131.1573, 0.0 ],
+    [ 0.0, 1.570796, 108.4209, 0.0 ],
+    [ 0.0, -1.570796, 68.5983, 0.0 ]
+  ],
+  "CalibrationJointPositions": [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ],
+  "MovementMode": 0,
+  "Override": 1.0,
+  "JointJogVelocity": [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ],
+  "InchDistance": [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ],
+  "JointTargetPosition": [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ],
+  "JointReferenceVelocity": [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ],
+  "JointReferenceAcceleration": [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ],
+  "JointReferenceJerk": [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ],
+  "MoveJReferenceVelocity": 0.2,
+  "MoveJReferenceAcceleration": 0.5,
+  "MoveJReferenceDeceleration": 0.5,
+  "TCPJogLinearVelocity": 3.0,
+  "TCPJogAngularVelocity": 0.05,
+  "TCPInchDistance": 1.0,
+  "TCPTargetPose": [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ],
+  "TCPMidPose": [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ],
+  "TCPRelativeDistance": [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ],
+  "TCPReferenceLinearVelocity": 30,
+  "TCPReferenceLinearAcceleration": 20.0,
+  "TCPReferenceLinearDeceleration": 20.0,
+  "TCPReferenceAngularVelocity": 0.05,
+  "TCPReferenceAngularAcceleration": 10.0,
+  "TCPReferenceAngularDeceleration": 10.0,
+  "TCPTargetVelocity": [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ],
+  "AdmittanceControlM": [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ],
+  "AdmittanceControlK": [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ],
+  "AdmittanceControlB": [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ],
+  "Tip": [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ],
+  "LoadMass": 0.0,
+  "LoadCOG": [ 0.0, 0.0, 0.0 ],
+  "SingleJointStatus": {
+    "ActualPosition": 0.0,
+    "ActualVelocity": 0.0,
+    "ActualAcceleration": 0.0,
+    "ActualCurrent": 0.0,
+    "Statusof402": 1
+  },
+  "JointsStatus": {
+    "J1": {
+      "ActualPosition": 0.0,
+      "ActualVelocity": 0.0,
+      "ActualAcceleration": 0.0,
+      "ActualCurrent": 0.0,
+      "Statusof402": 1
+    },
+    "J2": {
+      "ActualPosition": 0.0,
+      "ActualVelocity": 0.0,
+      "ActualAcceleration": 0.0,
+      "ActualCurrent": 0.0,
+      "Statusof402": 1
+    },
+    "J3": {
+      "ActualPosition": 0.0,
+      "ActualVelocity": 0.0,
+      "ActualAcceleration": 0.0,
+      "ActualCurrent": 0.0,
+      "Statusof402": 1
+    },
+    "J4": {
+      "ActualPosition": 0.0,
+      "ActualVelocity": 0.0,
+      "ActualAcceleration": 0.0,
+      "ActualCurrent": 0.0,
+      "Statusof402": 1
+    },
+    "J5": {
+      "ActualPosition": 0.0,
+      "ActualVelocity": 0.0,
+      "ActualAcceleration": 0.0,
+      "ActualCurrent": 0.0,
+      "Statusof402": 1
+    },
+    "J6": {
+      "ActualPosition": 0.0,
+      "ActualVelocity": 0.0,
+      "ActualAcceleration": 0.0,
+      "ActualCurrent": 0.0,
+      "Statusof402": 1
+    }
+  },
+  "PoseStatus": {
+    "X": 0.0,
+    "Y": 0.0,
+    "Z": 0.0,
+    "Roll": 0.0,
+    "Pitch": 0.0,
+    "Yaw": 0.0
+  },
+  "ManageStatus": {
+    "Initialized": false,
+    "Enabled": false,
+    "Moving": false,
+    "Error": false,
+    "ErrorID": false,
+    "Mode": 0
+  },
+  "RobotStatus": {
+    "Joints": {
+      "J1": {
+        "ActualPosition": 0.0,
+        "ActualVelocity": 0.0,
+        "ActualAcceleration": 0.0,
+        "ActualCurrent": 0.0,
+        "Statusof402": 1
+      },
+      "J2": {
+        "ActualPosition": 0.0,
+        "ActualVelocity": 0.0,
+        "ActualAcceleration": 0.0,
+        "ActualCurrent": 0.0,
+        "Statusof402": 1
+      },
+      "J3": {
+        "ActualPosition": 0.0,
+        "ActualVelocity": 0.0,
+        "ActualAcceleration": 0.0,
+        "ActualCurrent": 0.0,
+        "Statusof402": 1
+      },
+      "J4": {
+        "ActualPosition": 0.0,
+        "ActualVelocity": 0.0,
+        "ActualAcceleration": 0.0,
+        "ActualCurrent": 0.0,
+        "Statusof402": 1
+      },
+      "J5": {
+        "ActualPosition": 0.0,
+        "ActualVelocity": 0.0,
+        "ActualAcceleration": 0.0,
+        "ActualCurrent": 0.0,
+        "Statusof402": 1
+      },
+      "J6": {
+        "ActualPosition": 0.0,
+        "ActualVelocity": 0.0,
+        "ActualAcceleration": 0.0,
+        "ActualCurrent": 0.0,
+        "Statusof402": 1
+      }
+    },
+    "FlangePose": {
+      "X": 0.0,
+      "Y": 0.0,
+      "Z": 0.0,
+      "Roll": 0.0,
+      "Pitch": 0.0,
+      "Yaw": 0.0
+    },
+    "TcpPose": {
+      "X": 0.0,
+      "Y": 0.0,
+      "Z": 0.0,
+      "Roll": 0.0,
+      "Pitch": 0.0,
+      "Yaw": 0.0
+    },
+    "Manage": {
+      "Initialized": false,
+      "Enabled": false,
+      "Moving": false,
+      "Error": false,
+      "ErrorID": false,
+      "Mode": 0
+    }
+  }
+}
