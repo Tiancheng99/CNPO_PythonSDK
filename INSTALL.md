@@ -10,21 +10,12 @@ pip install -r requirements.txt
 ### 2. 安装 SDK（开发模式）
 ```bash
 # Windows PowerShell 用户
-$env:PYTHONUTF8=1; pip install -e .
-
-# Linux/Mac 用户
+$env:PYTHONUTF8=1
 pip install -e .
+
 ```
 
-### 3. 使用示例
-```python
-from Communication.ModBusService import ModBusService
-from PythonWorkFlow.Core.RobotCore import RobotCore
 
-# 代码...
-```
-
----
 
 ## 方法二：直接运行（无需安装）
 
@@ -33,16 +24,6 @@ from PythonWorkFlow.Core.RobotCore import RobotCore
 pip install -r requirements.txt
 ```
 
-### 2. 直接运行测试脚本
-确保在项目根目录下运行：
-```bash
-python Tests\moveJ_test.py
-```
-
-**注意**：使用此方法时，必须在项目根目录下运行，否则会找不到模块。
-
----
-
 ## 测试是否安装成功
 
 运行以下命令测试：
@@ -50,7 +31,17 @@ python Tests\moveJ_test.py
 python -c "import Communication; import PythonWorkFlow; print('安装成功！')"
 ```
 
----
+
+
+## 运行测试脚本
+确保在项目根目录下运行：
+```bash
+python Tests\moveJ_test.py
+```
+
+**注意**：使用此方法时，必须在项目根目录下运行，否则会找不到模块。
+
+
 
 ## 常见问题
 

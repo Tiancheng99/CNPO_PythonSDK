@@ -21,8 +21,7 @@ from PythonWorkFlow.Core.Basic import ControlMode
 # 配置区域
 # ==============================================================================
 CODESYS_CONFIG = {
-    # "target_ip": "192.168.1.253", # TODO: 修改为实际 PLC IP
-    "target_ip": "10.248.101.155",
+    "target_ip": "192.168.1.253", # TODO: 修改为实际 IP
     "port": 502,
     "unit_id": 1
 }
@@ -98,7 +97,7 @@ async def check_initialization(rc: RobotCore):
     status = rc.robot_status
     
     if not status.PowerOn:
-        print("警告: 机器人未处于使能状态 (PowerOn=False)")
+        print(" 机器人未处于使能状态。 ")
     else:
         print("状态检查: 机器人已使能")
 
@@ -112,12 +111,12 @@ async def test_robot_enable(rc: RobotCore):
     if rc.robot_status.PowerOn:
         print("机器人使能成功！")
     else:
-        print("警告：使能指令已发送，但反馈状态仍为 False")
+        print("警告：使能指令已发送，但反馈状态仍为 False。 请检查地址表是否配置正确！！！")
 
 async def test_set_mode(rc: RobotCore):
     """设置 MoveJoint 模式"""
     print("\n[3/4] 设置控制模式为 MoveJoint...")
-    rc.SetControlMode_sync(ControlMode.MoveJoint)  # 使用 _sync 版本
+    rc.SetControlMode_sync(ControlMode.MoveJoint)
     await asyncio.sleep(0.5)
 
 async def test_csv_trajectory(rc: RobotCore, csv_path: str):

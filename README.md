@@ -2,19 +2,32 @@
 
 机器人控制 SDK，基于 ModBus 通信协议。
 
-## 快速开始
+## 项目结构
+
+```
+SDKPythonV2/
+├── Communication/          # ModBus 通信模块
+│   ├── ModBusService.py
+│   ├── ModBusCommunicator.py
+│   └── ...
+├── PythonWorkFlow/        # 工作流核心模块
+│   └── Core/
+│       ├── RobotCore.py
+│       └── ...
+├── Tests/                 # 测试示例
+├── requirements.txt       # 依赖列表
+└── setup.py              # 安装配置
+```
+---
 
 ### 安装
 详细安装说明请查看 [INSTALL.md](INSTALL.md)
 
-```bash
-# 1. 安装依赖
-pip install -r requirements.txt
+---
+> ### 注意！！！！！
+运行前一定要确保`Config\modbus_address_book.compact_win.json`文件正确
 
-# 2. 安装 SDK（Windows PowerShell）
-$env:PYTHONUTF8=1; pip install -e .
-```
-
+---
 ### 运行示例
 
 1. **moveJ 读取 CSV 并逐个发送**  
@@ -23,7 +36,6 @@ $env:PYTHONUTF8=1; pip install -e .
    python Tests\moveJ.py
    ```
 
----
 
 ## 重要修改说明
 
@@ -46,21 +58,3 @@ $env:PYTHONUTF8=1; pip install -e .
 }
 ```
 
----
-
-## 项目结构
-
-```
-SDKPythonV2/
-├── Communication/          # ModBus 通信模块
-│   ├── ModBusService.py
-│   ├── ModBusCommunicator.py
-│   └── ...
-├── PythonWorkFlow/        # 工作流核心模块
-│   └── Core/
-│       ├── RobotCore.py
-│       └── ...
-├── Tests/                 # 测试示例
-├── requirements.txt       # 依赖列表
-└── setup.py              # 安装配置
-```
