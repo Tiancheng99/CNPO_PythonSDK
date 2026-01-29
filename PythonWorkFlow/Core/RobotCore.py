@@ -127,10 +127,12 @@ class RobotCore:
                 if device_params:
                     print("已从设备读取参数")
                 
-                # 2. 使能、重置
+                # 2. 使能机器人
                 await self.RobotEnable()
                 await asyncio.sleep(0.5) # 等待上电稳定
-                await self.RobotReset()
+
+                # 注意：跳过 Reset - 会导致下位机崩溃！
+                # await self.RobotReset()
                 
                 # 3. 设置默认控制模式
                 await self.SetControlMode(ControlMode.Calibration) # 或 Idel
@@ -194,7 +196,7 @@ class RobotCore:
         if not self.connected: return
         
         mode_key_map = {
-            ControlMode.Calibration: "Instructions.Switch_To_Idel_Mode",
+            ControlMode.Calibration: "Instructions.Switch_To_Idle_Mode",
             ControlMode.JointJog: "Instructions.Switch_To_JointJog_Mode",
             ControlMode.JointInch: "Instructions.Switch_To_JointInch_Mode",
             ControlMode.JointMoveAbs: "Instructions.Switch_To_JointMoveAbs_Mode",
@@ -231,6 +233,24 @@ class RobotCore:
             self._run_async(self.RobotEnable())
         except Exception as e:
             print(f"发送使能指令失败：{e}")
+            raise
+    
+    def RobotDisable_sync(self) -> None:
+        """失能机器人 (同步方法)"""
+        if not self.connected: return
+        try:
+            self._run_async(self.RobotDisable())
+        except Exception as e:
+            print(f"发送失能指令失败：{e}")
+            raise
+    
+    def RobotStop_sync(self) -> None:
+        """停止机器人所有运动 (同步方法)"""
+        if not self.connected: return
+        try:
+            self._run_async(self.RobotStop())
+        except Exception as e:
+            print(f"发送停止指令失败：{e}")
             raise
     
     def RobotReset_sync(self) -> None:
@@ -750,9 +770,16 @@ class RobotCore:
                 try:
                     # 将异步的 RobotDisable 提交给后台事件循环执行
                     disable_fut = asyncio.run_coroutine_threadsafe(self.RobotDisable(), self._loop)
-                    # TODO 等待失能指令执行完成，确保安全操作优先
-                    disable_fut.result(timeout=3.0) 
-                    print("机器人已成功失能 (Power_On=False)")
+                    # 等待失能指令执行完成
+                    disable_fut.result(timeout=3.0)
+                    
+                    # 等待状态更新并验证
+                    time.sleep(1.0)
+                    actual_power_on = self.robot_status.PowerOn
+                    if not actual_power_on:
+                        print("机器人已成功失能 (Power_On=False)")
+                    else:
+                        print(f"警告：失能指令已发送，但 Power_On 仍为 {actual_power_on}")
                 except asyncio.TimeoutError:
                     # 即使超时，也继续执行下一步，尝试关闭通信
                     print("发送失能指令超时，继续停止服务...")
@@ -790,3 +817,72 @@ class RobotCore:
 
         except Exception as e:
             print(f"停止机器人服务时发生未预期错误: {e}")
+
+    # ------------------------------
+    # 同步包装方法（用于外部调用）
+    # ------------------------------
+    def SetTip_sync(self, tip: List[float]) -> None:
+        """设置工具坐标（同步版本）"""
+        self._run_async(self.SetTip(tip))
+    
+    def SetGrip1_sync(self, grip_action: int) -> None:
+        """设置夹爪1（同步版本）"""
+        self._run_async(self.SetGrip1(grip_action))
+    
+    def SetGrip2_sync(self, grip_action: int) -> None:
+        """设置夹爪2（同步版本）"""
+        self._run_async(self.SetGrip2(grip_action))
+    
+    def SetLoadMass_sync(self, mass: float) -> None:
+        """设置负载质量（同步版本）"""
+        self._run_async(self.SetLoadMass(mass))
+    
+    def activateMoveLinear_sync(self) -> None:
+        """切换到 MoveLinear 模式（同步版本）"""
+        self._run_async(self.activateMoveLinear())
+    
+    def GetJointAngles(self) -> List[float]:
+        """获取当前关节角度（度）"""
+        import math
+        actual_rad = self.robot_status.JointActualPosition
+        return [math.degrees(r) for r in actual_rad]
+    
+    def GetTCPPose(self) -> List[float]:
+        """获取当前TCP位姿 [X, Y, Z, Roll, Pitch, Yaw]"""
+        return self.robot_status.TcpPose
+    
+    # ------------------------------
+    # 状态获取方法
+    # ------------------------------
+    def GetJointAngles(self, in_degrees: bool = False) -> List[float]:
+        """
+        获取当前关节角度
+        
+        Args:
+            in_degrees: True=返回度数, False=返回弧度（默认）
+        
+        Returns:
+            6个关节的角度列表
+        """
+        joint_rad = self.robot_status.JointActualPosition
+        if not joint_rad:
+            return [0.0] * 6
+        
+        if in_degrees:
+            import math
+            return [math.degrees(r) for r in joint_rad]
+        return list(joint_rad)
+    
+    def GetTcpPose(self) -> List[float]:
+        """
+        获取当前TCP位姿
+        
+        Returns:
+            [X, Y, Z, Roll, Pitch, Yaw]
+            X/Y/Z单位: mm
+            Roll/Pitch/Yaw单位: 弧度
+        """
+        tcp_pose = self.robot_status.TcpPose
+        if not tcp_pose:
+            return [0.0] * 6
+        return list(tcp_pose)

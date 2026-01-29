@@ -90,9 +90,9 @@
     "bitBase": 48,
     "bitStride": 8
   },
-  "Flags.Safty_Stopped": {
+  "Flags.Safety_Stopped": {
     "typeName": "Flags",
-    "field": "Safty_Stopped",
+    "field": "Safety_Stopped",
     "baseType": "BOOL",
     "area": "InputStatus",
     "bytesPerElem": 1,
@@ -150,34 +150,17 @@
     "bitBase": 160,
     "bitStride": 8
   },
-  "Flags.Digital_Input": {
-    "typeName": "Flags",
-    "field": "Digital_Input",
-    "baseType": "BOOL",
-    "area": "InputStatus",
-    "bytesPerElem": 1,
-    "startByteOffset": 21,
-    "dims": [
-      8
-    ],
-    "strides": [
-      1
-    ],
-    "count": 8,
-    "bitBase": 168,
-    "bitStride": 8
-  },
   "Flags.Dynamic_Collision": {
     "typeName": "Flags",
     "field": "Dynamic_Collision",
     "baseType": "BOOL",
     "area": "InputStatus",
     "bytesPerElem": 1,
-    "startByteOffset": 29,
+    "startByteOffset": 21,
     "dims": [],
     "strides": [],
     "count": 1,
-    "bitBase": 232,
+    "bitBase": 168,
     "bitStride": 8
   },
   "Flags.Dynamic_Collision_Joint": {
@@ -186,7 +169,7 @@
     "baseType": "BOOL",
     "area": "InputStatus",
     "bytesPerElem": 1,
-    "startByteOffset": 30,
+    "startByteOffset": 22,
     "dims": [
       6
     ],
@@ -194,7 +177,7 @@
       1
     ],
     "count": 6,
-    "bitBase": 240,
+    "bitBase": 176,
     "bitStride": 8
   },
   "Flags.Geometry_Collision": {
@@ -203,11 +186,11 @@
     "baseType": "BOOL",
     "area": "InputStatus",
     "bytesPerElem": 1,
-    "startByteOffset": 36,
+    "startByteOffset": 28,
     "dims": [],
     "strides": [],
     "count": 1,
-    "bitBase": 288,
+    "bitBase": 224,
     "bitStride": 8
   },
   "Flags.Geometry_Collision_Joint": {
@@ -216,7 +199,7 @@
     "baseType": "BOOL",
     "area": "InputStatus",
     "bytesPerElem": 1,
-    "startByteOffset": 37,
+    "startByteOffset": 29,
     "dims": [
       6
     ],
@@ -224,12 +207,55 @@
       1
     ],
     "count": 6,
-    "bitBase": 296,
+    "bitBase": 232,
     "bitStride": 8
   },
   "Flags.EC_Master_Error": {
     "typeName": "Flags",
     "field": "EC_Master_Error",
+    "baseType": "BOOL",
+    "area": "InputStatus",
+    "bytesPerElem": 1,
+    "startByteOffset": 35,
+    "dims": [],
+    "strides": [],
+    "count": 1,
+    "bitBase": 280,
+    "bitStride": 8
+  },
+  "Flags.EC_Slave_Error": {
+    "typeName": "Flags",
+    "field": "EC_Slave_Error",
+    "baseType": "BOOL",
+    "area": "InputStatus",
+    "bytesPerElem": 1,
+    "startByteOffset": 36,
+    "dims": [
+      6
+    ],
+    "strides": [
+      1
+    ],
+    "count": 6,
+    "bitBase": 288,
+    "bitStride": 8
+  },
+  "Flags.ModBusTcp_Error": {
+    "typeName": "Flags",
+    "field": "ModBusTcp_Error",
+    "baseType": "BOOL",
+    "area": "InputStatus",
+    "bytesPerElem": 1,
+    "startByteOffset": 42,
+    "dims": [],
+    "strides": [],
+    "count": 1,
+    "bitBase": 336,
+    "bitStride": 8
+  },
+  "Flags.UPS_OK": {
+    "typeName": "Flags",
+    "field": "UPS_OK",
     "baseType": "BOOL",
     "area": "InputStatus",
     "bytesPerElem": 1,
@@ -240,47 +266,21 @@
     "bitBase": 344,
     "bitStride": 8
   },
-  "Flags.EC_Slave_Error": {
+  "Flags.Digital_Input": {
     "typeName": "Flags",
-    "field": "EC_Slave_Error",
+    "field": "Digital_Input",
     "baseType": "BOOL",
     "area": "InputStatus",
     "bytesPerElem": 1,
     "startByteOffset": 44,
     "dims": [
-      6
+      8
     ],
     "strides": [
       1
     ],
-    "count": 6,
+    "count": 8,
     "bitBase": 352,
-    "bitStride": 8
-  },
-  "Flags.ModBusTcp_Error": {
-    "typeName": "Flags",
-    "field": "ModBusTcp_Error",
-    "baseType": "BOOL",
-    "area": "InputStatus",
-    "bytesPerElem": 1,
-    "startByteOffset": 50,
-    "dims": [],
-    "strides": [],
-    "count": 1,
-    "bitBase": 400,
-    "bitStride": 8
-  },
-  "Flags.UIN_OK": {
-    "typeName": "Flags",
-    "field": "UIN_OK",
-    "baseType": "BOOL",
-    "area": "InputStatus",
-    "bytesPerElem": 1,
-    "startByteOffset": 51,
-    "dims": [],
-    "strides": [],
-    "count": 1,
-    "bitBase": 408,
     "bitStride": 8
   },
   "Instructions.Power_On": {
@@ -296,9 +296,9 @@
     "bitBase": 0,
     "bitStride": 8
   },
-  "Instructions.Reset_Execute": {
+  "Instructions.Power_Off": {
     "typeName": "Instructions",
-    "field": "Reset_Execute",
+    "field": "Power_Off",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -309,9 +309,9 @@
     "bitBase": 8,
     "bitStride": 8
   },
-  "Instructions.Stop_Execute": {
+  "Instructions.Reset_Execute": {
     "typeName": "Instructions",
-    "field": "Stop_Execute",
+    "field": "Reset_Execute",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -322,9 +322,9 @@
     "bitBase": 16,
     "bitStride": 8
   },
-  "Instructions.Enable_Addmitance_Ctrl": {
+  "Instructions.Stop_Execute": {
     "typeName": "Instructions",
-    "field": "Enable_Addmitance_Ctrl",
+    "field": "Stop_Execute",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -335,13 +335,26 @@
     "bitBase": 24,
     "bitStride": 8
   },
+  "Instructions.Heart_Beat": {
+    "typeName": "Instructions",
+    "field": "Heart_Beat",
+    "baseType": "BOOL",
+    "area": "Coils",
+    "bytesPerElem": 1,
+    "startByteOffset": 4,
+    "dims": [],
+    "strides": [],
+    "count": 1,
+    "bitBase": 32,
+    "bitStride": 8
+  },
   "Instructions.Joint_Jog_Forward": {
     "typeName": "Instructions",
     "field": "Joint_Jog_Forward",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
-    "startByteOffset": 4,
+    "startByteOffset": 5,
     "dims": [
       6
     ],
@@ -349,7 +362,7 @@
       1
     ],
     "count": 6,
-    "bitBase": 32,
+    "bitBase": 40,
     "bitStride": 8
   },
   "Instructions.Joint_Jog_Backward": {
@@ -358,7 +371,7 @@
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
-    "startByteOffset": 10,
+    "startByteOffset": 11,
     "dims": [
       6
     ],
@@ -366,7 +379,7 @@
       1
     ],
     "count": 6,
-    "bitBase": 80,
+    "bitBase": 88,
     "bitStride": 8
   },
   "Instructions.Joint_Inch_Forward": {
@@ -375,7 +388,7 @@
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
-    "startByteOffset": 16,
+    "startByteOffset": 17,
     "dims": [
       6
     ],
@@ -383,7 +396,7 @@
       1
     ],
     "count": 6,
-    "bitBase": 128,
+    "bitBase": 136,
     "bitStride": 8
   },
   "Instructions.Joint_Inch_Backward": {
@@ -392,7 +405,7 @@
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
-    "startByteOffset": 22,
+    "startByteOffset": 23,
     "dims": [
       6
     ],
@@ -400,7 +413,7 @@
       1
     ],
     "count": 6,
-    "bitBase": 176,
+    "bitBase": 184,
     "bitStride": 8
   },
   "Instructions.Joint_MoveABS_Execute": {
@@ -409,7 +422,7 @@
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
-    "startByteOffset": 28,
+    "startByteOffset": 29,
     "dims": [
       6
     ],
@@ -417,7 +430,7 @@
       1
     ],
     "count": 6,
-    "bitBase": 224,
+    "bitBase": 232,
     "bitStride": 8
   },
   "Instructions.Joint_Stop_Execute": {
@@ -426,7 +439,7 @@
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
-    "startByteOffset": 34,
+    "startByteOffset": 35,
     "dims": [
       6
     ],
@@ -434,25 +447,12 @@
       1
     ],
     "count": 6,
-    "bitBase": 272,
+    "bitBase": 280,
     "bitStride": 8
   },
-  "Instructions.TCP_Move_Rel_Execute": {
+  "Instructions.Enable_Addmitance_Ctrl": {
     "typeName": "Instructions",
-    "field": "TCP_Move_Rel_Execute",
-    "baseType": "BOOL",
-    "area": "Coils",
-    "bytesPerElem": 1,
-    "startByteOffset": 40,
-    "dims": [],
-    "strides": [],
-    "count": 1,
-    "bitBase": 320,
-    "bitStride": 8
-  },
-  "Instructions.TCP_Move_Rel_Abort": {
-    "typeName": "Instructions",
-    "field": "TCP_Move_Rel_Abort",
+    "field": "Enable_Addmitance_Ctrl",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -463,9 +463,9 @@
     "bitBase": 328,
     "bitStride": 8
   },
-  "Instructions.TCP_Move_Joint_Execute": {
+  "Instructions.TCP_Move_Rel_Execute": {
     "typeName": "Instructions",
-    "field": "TCP_Move_Joint_Execute",
+    "field": "TCP_Move_Rel_Execute",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -476,9 +476,9 @@
     "bitBase": 336,
     "bitStride": 8
   },
-  "Instructions.TCP_Move_Joint_Abort": {
+  "Instructions.TCP_Move_Rel_Abort": {
     "typeName": "Instructions",
-    "field": "TCP_Move_Joint_Abort",
+    "field": "TCP_Move_Rel_Abort",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -489,9 +489,9 @@
     "bitBase": 344,
     "bitStride": 8
   },
-  "Instructions.TCP_Move_Linear_Execute": {
+  "Instructions.TCP_Move_Joint_Execute": {
     "typeName": "Instructions",
-    "field": "TCP_Move_Linear_Execute",
+    "field": "TCP_Move_Joint_Execute",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -502,9 +502,9 @@
     "bitBase": 352,
     "bitStride": 8
   },
-  "Instructions.TCP_Move_Linear_Abort": {
+  "Instructions.TCP_Move_Joint_Abort": {
     "typeName": "Instructions",
-    "field": "TCP_Move_Linear_Abort",
+    "field": "TCP_Move_Joint_Abort",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -515,9 +515,9 @@
     "bitBase": 360,
     "bitStride": 8
   },
-  "Instructions.TCP_Move_Circle_Execute": {
+  "Instructions.TCP_Move_Linear_Execute": {
     "typeName": "Instructions",
-    "field": "TCP_Move_Circle_Execute",
+    "field": "TCP_Move_Linear_Execute",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -528,9 +528,9 @@
     "bitBase": 368,
     "bitStride": 8
   },
-  "Instructions.TCP_Move_Circle_Abort": {
+  "Instructions.TCP_Move_Linear_Abort": {
     "typeName": "Instructions",
-    "field": "TCP_Move_Circle_Abort",
+    "field": "TCP_Move_Linear_Abort",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -541,9 +541,9 @@
     "bitBase": 376,
     "bitStride": 8
   },
-  "Instructions.TCP_Move_Velocity_Execute": {
+  "Instructions.TCP_Move_Circle_Execute": {
     "typeName": "Instructions",
-    "field": "TCP_Move_Velocity_Execute",
+    "field": "TCP_Move_Circle_Execute",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -554,9 +554,9 @@
     "bitBase": 384,
     "bitStride": 8
   },
-  "Instructions.TCP_Move_Velocity_Abort": {
+  "Instructions.TCP_Move_Circle_Abort": {
     "typeName": "Instructions",
-    "field": "TCP_Move_Velocity_Abort",
+    "field": "TCP_Move_Circle_Abort",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -567,9 +567,9 @@
     "bitBase": 392,
     "bitStride": 8
   },
-  "Instructions.TCP_Move_Path_Joint_Execute": {
+  "Instructions.TCP_Move_Velocity_Execute": {
     "typeName": "Instructions",
-    "field": "TCP_Move_Path_Joint_Execute",
+    "field": "TCP_Move_Velocity_Execute",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -580,9 +580,9 @@
     "bitBase": 400,
     "bitStride": 8
   },
-  "Instructions.TCP_Move_Path_Joint_Abort": {
+  "Instructions.TCP_Move_Velocity_Abort": {
     "typeName": "Instructions",
-    "field": "TCP_Move_Path_Joint_Abort",
+    "field": "TCP_Move_Velocity_Abort",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -593,9 +593,9 @@
     "bitBase": 408,
     "bitStride": 8
   },
-  "Instructions.TCP_Move_Path_Linear_Execute": {
+  "Instructions.TCP_Move_Path_Joint_Execute": {
     "typeName": "Instructions",
-    "field": "TCP_Move_Path_Linear_Execute",
+    "field": "TCP_Move_Path_Joint_Execute",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -606,9 +606,9 @@
     "bitBase": 416,
     "bitStride": 8
   },
-  "Instructions.TCP_Move_Path_Linear_Abort": {
+  "Instructions.TCP_Move_Path_Joint_Abort": {
     "typeName": "Instructions",
-    "field": "TCP_Move_Path_Linear_Abort",
+    "field": "TCP_Move_Path_Joint_Abort",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -619,9 +619,9 @@
     "bitBase": 424,
     "bitStride": 8
   },
-  "Instructions.AdmittanceControl_Enable": {
+  "Instructions.TCP_Move_Path_Linear_Execute": {
     "typeName": "Instructions",
-    "field": "AdmittanceControl_Enable",
+    "field": "TCP_Move_Path_Linear_Execute",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -632,13 +632,26 @@
     "bitBase": 432,
     "bitStride": 8
   },
+  "Instructions.TCP_Move_Path_Linear_Abort": {
+    "typeName": "Instructions",
+    "field": "TCP_Move_Path_Linear_Abort",
+    "baseType": "BOOL",
+    "area": "Coils",
+    "bytesPerElem": 1,
+    "startByteOffset": 55,
+    "dims": [],
+    "strides": [],
+    "count": 1,
+    "bitBase": 440,
+    "bitStride": 8
+  },
   "Instructions.TCP_Jog_Positive": {
     "typeName": "Instructions",
     "field": "TCP_Jog_Positive",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
-    "startByteOffset": 55,
+    "startByteOffset": 56,
     "dims": [
       6
     ],
@@ -646,7 +659,7 @@
       1
     ],
     "count": 6,
-    "bitBase": 440,
+    "bitBase": 448,
     "bitStride": 8
   },
   "Instructions.TCP_Jog_Negative": {
@@ -655,7 +668,7 @@
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
-    "startByteOffset": 61,
+    "startByteOffset": 62,
     "dims": [
       6
     ],
@@ -663,7 +676,7 @@
       1
     ],
     "count": 6,
-    "bitBase": 488,
+    "bitBase": 496,
     "bitStride": 8
   },
   "Instructions.TCP_Inch_Positive": {
@@ -672,7 +685,7 @@
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
-    "startByteOffset": 67,
+    "startByteOffset": 68,
     "dims": [
       6
     ],
@@ -680,7 +693,7 @@
       1
     ],
     "count": 6,
-    "bitBase": 536,
+    "bitBase": 544,
     "bitStride": 8
   },
   "Instructions.TCP_Inch_Negative": {
@@ -689,7 +702,7 @@
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
-    "startByteOffset": 73,
+    "startByteOffset": 74,
     "dims": [
       6
     ],
@@ -697,25 +710,12 @@
       1
     ],
     "count": 6,
-    "bitBase": 584,
+    "bitBase": 592,
     "bitStride": 8
   },
   "Instructions.Calibrate_Joint_Position": {
     "typeName": "Instructions",
     "field": "Calibrate_Joint_Position",
-    "baseType": "BOOL",
-    "area": "Coils",
-    "bytesPerElem": 1,
-    "startByteOffset": 79,
-    "dims": [],
-    "strides": [],
-    "count": 1,
-    "bitBase": 632,
-    "bitStride": 8
-  },
-  "Instructions.TCP_Jog_Inch_Coord": {
-    "typeName": "Instructions",
-    "field": "TCP_Jog_Inch_Coord",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -726,13 +726,26 @@
     "bitBase": 640,
     "bitStride": 8
   },
+  "Instructions.TCP_Jog_Inch_Coord": {
+    "typeName": "Instructions",
+    "field": "TCP_Jog_Inch_Coord",
+    "baseType": "BOOL",
+    "area": "Coils",
+    "bytesPerElem": 1,
+    "startByteOffset": 81,
+    "dims": [],
+    "strides": [],
+    "count": 1,
+    "bitBase": 648,
+    "bitStride": 8
+  },
   "Instructions.Digital_Output": {
     "typeName": "Instructions",
     "field": "Digital_Output",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
-    "startByteOffset": 81,
+    "startByteOffset": 82,
     "dims": [
       8
     ],
@@ -740,25 +753,12 @@
       1
     ],
     "count": 8,
-    "bitBase": 648,
+    "bitBase": 656,
     "bitStride": 8
   },
   "Instructions.Calibrate_FTSensor_SoftWare": {
     "typeName": "Instructions",
     "field": "Calibrate_FTSensor_SoftWare",
-    "baseType": "BOOL",
-    "area": "Coils",
-    "bytesPerElem": 1,
-    "startByteOffset": 89,
-    "dims": [],
-    "strides": [],
-    "count": 1,
-    "bitBase": 712,
-    "bitStride": 8
-  },
-  "Instructions.Calibrate_FTSensor_HardWare": {
-    "typeName": "Instructions",
-    "field": "Calibrate_FTSensor_HardWare",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -769,9 +769,9 @@
     "bitBase": 720,
     "bitStride": 8
   },
-  "Instructions.Reset_FTSensor_Calibration": {
+  "Instructions.Calibrate_FTSensor_HardWare": {
     "typeName": "Instructions",
-    "field": "Reset_FTSensor_Calibration",
+    "field": "Calibrate_FTSensor_HardWare",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -782,9 +782,9 @@
     "bitBase": 728,
     "bitStride": 8
   },
-  "Instructions.TCP_Leveling_Execute": {
+  "Instructions.Reset_FTSensor_Calibration": {
     "typeName": "Instructions",
-    "field": "TCP_Leveling_Execute",
+    "field": "Reset_FTSensor_Calibration",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -795,9 +795,9 @@
     "bitBase": 736,
     "bitStride": 8
   },
-  "Instructions.TCP_Leveling_Abort": {
+  "Instructions.TCP_Leveling_Execute": {
     "typeName": "Instructions",
-    "field": "TCP_Leveling_Abort",
+    "field": "TCP_Leveling_Execute",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -808,9 +808,9 @@
     "bitBase": 744,
     "bitStride": 8
   },
-  "Instructions.TCP_Leveling_mode": {
+  "Instructions.TCP_Leveling_Abort": {
     "typeName": "Instructions",
-    "field": "TCP_Leveling_mode",
+    "field": "TCP_Leveling_Abort",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -821,9 +821,9 @@
     "bitBase": 752,
     "bitStride": 8
   },
-  "Instructions.TCP_Leveling_Coordinate_mode": {
+  "Instructions.TCP_Leveling_mode": {
     "typeName": "Instructions",
-    "field": "TCP_Leveling_Coordinate_mode",
+    "field": "TCP_Leveling_mode",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -834,9 +834,9 @@
     "bitBase": 760,
     "bitStride": 8
   },
-  "Instructions.Enable_Dynamic_Collision": {
+  "Instructions.TCP_Leveling_Coordinate_mode": {
     "typeName": "Instructions",
-    "field": "Enable_Dynamic_Collision",
+    "field": "TCP_Leveling_Coordinate_mode",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -877,9 +877,9 @@
     "bitBase": 784,
     "bitStride": 8
   },
-  "Instructions.Heart_Beat": {
+  "Instructions.Enable_Dynamic_Collision": {
     "typeName": "Instructions",
-    "field": "Heart_Beat",
+    "field": "Enable_Dynamic_Collision",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -890,9 +890,9 @@
     "bitBase": 832,
     "bitStride": 8
   },
-  "Instructions.Power_Off": {
+  "Instructions.Switch_To_Idle_Mode": {
     "typeName": "Instructions",
-    "field": "Power_Off",
+    "field": "Switch_To_Idle_Mode",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -903,9 +903,9 @@
     "bitBase": 840,
     "bitStride": 8
   },
-  "Instructions.Switch_To_Idel_Mode": {
+  "Instructions.Switch_To_JointJog_Mode": {
     "typeName": "Instructions",
-    "field": "Switch_To_Idel_Mode",
+    "field": "Switch_To_JointJog_Mode",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -916,9 +916,9 @@
     "bitBase": 848,
     "bitStride": 8
   },
-  "Instructions.Switch_To_JointJog_Mode": {
+  "Instructions.Switch_To_JointInch_Mode": {
     "typeName": "Instructions",
-    "field": "Switch_To_JointJog_Mode",
+    "field": "Switch_To_JointInch_Mode",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -929,9 +929,9 @@
     "bitBase": 856,
     "bitStride": 8
   },
-  "Instructions.Switch_To_JointInch_Mode": {
+  "Instructions.Switch_To_JointMoveAbs_Mode": {
     "typeName": "Instructions",
-    "field": "Switch_To_JointInch_Mode",
+    "field": "Switch_To_JointMoveAbs_Mode",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -942,9 +942,9 @@
     "bitBase": 864,
     "bitStride": 8
   },
-  "Instructions.Switch_To_JointMoveAbs_Mode": {
+  "Instructions.Switch_To_MoveJoint_Mode": {
     "typeName": "Instructions",
-    "field": "Switch_To_JointMoveAbs_Mode",
+    "field": "Switch_To_MoveJoint_Mode",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -955,9 +955,9 @@
     "bitBase": 872,
     "bitStride": 8
   },
-  "Instructions.Switch_To_MoveJoint_Mode": {
+  "Instructions.Switch_To_MoveLinear_Mode": {
     "typeName": "Instructions",
-    "field": "Switch_To_MoveJoint_Mode",
+    "field": "Switch_To_MoveLinear_Mode",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -968,9 +968,9 @@
     "bitBase": 880,
     "bitStride": 8
   },
-  "Instructions.Switch_To_MoveLinear_Mode": {
+  "Instructions.Switch_To_MoveCircle_Mode": {
     "typeName": "Instructions",
-    "field": "Switch_To_MoveLinear_Mode",
+    "field": "Switch_To_MoveCircle_Mode",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -981,9 +981,9 @@
     "bitBase": 888,
     "bitStride": 8
   },
-  "Instructions.Switch_To_MoveCircle_Mode": {
+  "Instructions.Switch_To_TcpJog_Mode": {
     "typeName": "Instructions",
-    "field": "Switch_To_MoveCircle_Mode",
+    "field": "Switch_To_TcpJog_Mode",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -994,9 +994,9 @@
     "bitBase": 896,
     "bitStride": 8
   },
-  "Instructions.Switch_To_TcpJog_Mode": {
+  "Instructions.Switch_To_TcpInch_Mode": {
     "typeName": "Instructions",
-    "field": "Switch_To_TcpJog_Mode",
+    "field": "Switch_To_TcpInch_Mode",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -1007,9 +1007,9 @@
     "bitBase": 904,
     "bitStride": 8
   },
-  "Instructions.Switch_To_TcpInch_Mode": {
+  "Instructions.Switch_To_TcpLeveling_Mode": {
     "typeName": "Instructions",
-    "field": "Switch_To_TcpInch_Mode",
+    "field": "Switch_To_TcpLeveling_Mode",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -1020,9 +1020,9 @@
     "bitBase": 912,
     "bitStride": 8
   },
-  "Instructions.Switch_To_TcpLeveling_Mode": {
+  "Instructions.Switch_To_TcpMoveRel_Mode": {
     "typeName": "Instructions",
-    "field": "Switch_To_TcpLeveling_Mode",
+    "field": "Switch_To_TcpMoveRel_Mode",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -1033,9 +1033,9 @@
     "bitBase": 920,
     "bitStride": 8
   },
-  "Instructions.Switch_To_TcpMoveRel_Mode": {
+  "Instructions.Switch_To_ExternalTrajectory_Mode": {
     "typeName": "Instructions",
-    "field": "Switch_To_TcpMoveRel_Mode",
+    "field": "Switch_To_ExternalTrajectory_Mode",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -1046,9 +1046,9 @@
     "bitBase": 928,
     "bitStride": 8
   },
-  "Instructions.Switch_To_ExternalTrajectory_Mode": {
+  "Instructions.Switch_To_VelocityLimitTest_Mode": {
     "typeName": "Instructions",
-    "field": "Switch_To_ExternalTrajectory_Mode",
+    "field": "Switch_To_VelocityLimitTest_Mode",
     "baseType": "BOOL",
     "area": "Coils",
     "bytesPerElem": 1,
@@ -1057,19 +1057,6 @@
     "strides": [],
     "count": 1,
     "bitBase": 936,
-    "bitStride": 8
-  },
-  "Instructions.Switch_To_VelocityLimitTest_Mode": {
-    "typeName": "Instructions",
-    "field": "Switch_To_VelocityLimitTest_Mode",
-    "baseType": "BOOL",
-    "area": "Coils",
-    "bytesPerElem": 1,
-    "startByteOffset": 118,
-    "dims": [],
-    "strides": [],
-    "count": 1,
-    "bitBase": 944,
     "bitStride": 8
   },
   "Parameters.DH_Parameters": {
@@ -1108,30 +1095,17 @@
     "regBase": 48,
     "regStride": 2
   },
-  "Parameters.Movement_Mode": {
-    "typeName": "Parameters",
-    "field": "Movement_Mode",
-    "baseType": "UINT",
-    "area": "HoldingRegisters",
-    "bytesPerElem": 2,
-    "startByteOffset": 120,
-    "dims": [],
-    "strides": [],
-    "count": 1,
-    "regBase": 60,
-    "regStride": 1
-  },
   "Parameters.Override": {
     "typeName": "Parameters",
     "field": "Override",
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 124,
+    "startByteOffset": 120,
     "dims": [],
     "strides": [],
     "count": 1,
-    "regBase": 62,
+    "regBase": 60,
     "regStride": 2
   },
   "Parameters.Joint_Jog_Velocity": {
@@ -1140,7 +1114,7 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 128,
+    "startByteOffset": 124,
     "dims": [
       6
     ],
@@ -1148,7 +1122,7 @@
       1
     ],
     "count": 6,
-    "regBase": 64,
+    "regBase": 62,
     "regStride": 2
   },
   "Parameters.Inch_Distance": {
@@ -1157,7 +1131,7 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 152,
+    "startByteOffset": 148,
     "dims": [
       6
     ],
@@ -1165,7 +1139,7 @@
       1
     ],
     "count": 6,
-    "regBase": 76,
+    "regBase": 74,
     "regStride": 2
   },
   "Parameters.Joint_Target_Position": {
@@ -1174,7 +1148,7 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 176,
+    "startByteOffset": 172,
     "dims": [
       6
     ],
@@ -1182,7 +1156,7 @@
       1
     ],
     "count": 6,
-    "regBase": 88,
+    "regBase": 86,
     "regStride": 2
   },
   "Parameters.Joint_Refference_Velocity": {
@@ -1191,7 +1165,7 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 200,
+    "startByteOffset": 196,
     "dims": [
       6
     ],
@@ -1199,7 +1173,7 @@
       1
     ],
     "count": 6,
-    "regBase": 100,
+    "regBase": 98,
     "regStride": 2
   },
   "Parameters.Joint_Refference_Acceleration": {
@@ -1208,7 +1182,7 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 224,
+    "startByteOffset": 220,
     "dims": [
       6
     ],
@@ -1216,7 +1190,7 @@
       1
     ],
     "count": 6,
-    "regBase": 112,
+    "regBase": 110,
     "regStride": 2
   },
   "Parameters.Joint_Refference_Jerk": {
@@ -1225,7 +1199,7 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 248,
+    "startByteOffset": 244,
     "dims": [
       6
     ],
@@ -1233,12 +1207,25 @@
       1
     ],
     "count": 6,
-    "regBase": 124,
+    "regBase": 122,
     "regStride": 2
   },
   "Parameters.MoveJ_Refference_Velocity": {
     "typeName": "Parameters",
     "field": "MoveJ_Refference_Velocity",
+    "baseType": "REAL",
+    "area": "HoldingRegisters",
+    "bytesPerElem": 4,
+    "startByteOffset": 268,
+    "dims": [],
+    "strides": [],
+    "count": 1,
+    "regBase": 134,
+    "regStride": 2
+  },
+  "Parameters.MoveJ_Refference_Acceleration": {
+    "typeName": "Parameters",
+    "field": "MoveJ_Refference_Acceleration",
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
@@ -1249,9 +1236,9 @@
     "regBase": 136,
     "regStride": 2
   },
-  "Parameters.MoveJ_Refference_Acceleration": {
+  "Parameters.MoveJ_Refference_Deceleration": {
     "typeName": "Parameters",
-    "field": "MoveJ_Refference_Acceleration",
+    "field": "MoveJ_Refference_Deceleration",
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
@@ -1262,9 +1249,9 @@
     "regBase": 138,
     "regStride": 2
   },
-  "Parameters.MoveJ_Refference_Deceleration": {
+  "Parameters.TCP_Jog_Linear_Velocity": {
     "typeName": "Parameters",
-    "field": "MoveJ_Refference_Deceleration",
+    "field": "TCP_Jog_Linear_Velocity",
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
@@ -1275,9 +1262,9 @@
     "regBase": 140,
     "regStride": 2
   },
-  "Parameters.TCP_Jog_Linear_Velocity": {
+  "Parameters.TCP_Jog_Angular_Velocity": {
     "typeName": "Parameters",
-    "field": "TCP_Jog_Linear_Velocity",
+    "field": "TCP_Jog_Angular_Velocity",
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
@@ -1288,9 +1275,9 @@
     "regBase": 142,
     "regStride": 2
   },
-  "Parameters.TCP_Jog_Angular_Velocity": {
+  "Parameters.TCP_Inch_Linear_Distance": {
     "typeName": "Parameters",
-    "field": "TCP_Jog_Angular_Velocity",
+    "field": "TCP_Inch_Linear_Distance",
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
@@ -1301,9 +1288,9 @@
     "regBase": 144,
     "regStride": 2
   },
-  "Parameters.TCP_Inch_Linear_Distance": {
+  "Parameters.TCP_Inch_Angular_Distance": {
     "typeName": "Parameters",
-    "field": "TCP_Inch_Linear_Distance",
+    "field": "TCP_Inch_Angular_Distance",
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
@@ -1314,26 +1301,13 @@
     "regBase": 146,
     "regStride": 2
   },
-  "Parameters.TCP_Inch_Angular_Distance": {
-    "typeName": "Parameters",
-    "field": "TCP_Inch_Angular_Distance",
-    "baseType": "REAL",
-    "area": "HoldingRegisters",
-    "bytesPerElem": 4,
-    "startByteOffset": 296,
-    "dims": [],
-    "strides": [],
-    "count": 1,
-    "regBase": 148,
-    "regStride": 2
-  },
   "Parameters.TCP_Target_Pose": {
     "typeName": "Parameters",
     "field": "TCP_Target_Pose",
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 300,
+    "startByteOffset": 296,
     "dims": [
       6
     ],
@@ -1341,7 +1315,7 @@
       1
     ],
     "count": 6,
-    "regBase": 150,
+    "regBase": 148,
     "regStride": 2
   },
   "Parameters.TCP_Mid_Pose": {
@@ -1350,7 +1324,7 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 324,
+    "startByteOffset": 320,
     "dims": [
       6
     ],
@@ -1358,12 +1332,25 @@
       1
     ],
     "count": 6,
-    "regBase": 162,
+    "regBase": 160,
     "regStride": 2
   },
   "Parameters.TCP_Refference_Linear_Velocity": {
     "typeName": "Parameters",
     "field": "TCP_Refference_Linear_Velocity",
+    "baseType": "REAL",
+    "area": "HoldingRegisters",
+    "bytesPerElem": 4,
+    "startByteOffset": 344,
+    "dims": [],
+    "strides": [],
+    "count": 1,
+    "regBase": 172,
+    "regStride": 2
+  },
+  "Parameters.TCP_Refference_Linear_Acceleration": {
+    "typeName": "Parameters",
+    "field": "TCP_Refference_Linear_Acceleration",
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
@@ -1374,9 +1361,9 @@
     "regBase": 174,
     "regStride": 2
   },
-  "Parameters.TCP_Refference_Linear_Acceleration": {
+  "Parameters.TCP_Refference_Linear_Deceleration": {
     "typeName": "Parameters",
-    "field": "TCP_Refference_Linear_Acceleration",
+    "field": "TCP_Refference_Linear_Deceleration",
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
@@ -1387,9 +1374,9 @@
     "regBase": 176,
     "regStride": 2
   },
-  "Parameters.TCP_Refference_Linear_Deceleration": {
+  "Parameters.TCP_Refference_Angular_Velocity": {
     "typeName": "Parameters",
-    "field": "TCP_Refference_Linear_Deceleration",
+    "field": "TCP_Refference_Angular_Velocity",
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
@@ -1400,9 +1387,9 @@
     "regBase": 178,
     "regStride": 2
   },
-  "Parameters.TCP_Refference_Angular_Velocity": {
+  "Parameters.TCP_Refference_Angular_Acceleration": {
     "typeName": "Parameters",
-    "field": "TCP_Refference_Angular_Velocity",
+    "field": "TCP_Refference_Angular_Acceleration",
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
@@ -1413,9 +1400,9 @@
     "regBase": 180,
     "regStride": 2
   },
-  "Parameters.TCP_Refference_Angular_Acceleration": {
+  "Parameters.TCP_Refference_Angular_Deceleration": {
     "typeName": "Parameters",
-    "field": "TCP_Refference_Angular_Acceleration",
+    "field": "TCP_Refference_Angular_Deceleration",
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
@@ -1426,26 +1413,13 @@
     "regBase": 182,
     "regStride": 2
   },
-  "Parameters.TCP_Refference_Angular_Deceleration": {
-    "typeName": "Parameters",
-    "field": "TCP_Refference_Angular_Deceleration",
-    "baseType": "REAL",
-    "area": "HoldingRegisters",
-    "bytesPerElem": 4,
-    "startByteOffset": 368,
-    "dims": [],
-    "strides": [],
-    "count": 1,
-    "regBase": 184,
-    "regStride": 2
-  },
   "Parameters.TCP_Target_Velocity": {
     "typeName": "Parameters",
     "field": "TCP_Target_Velocity",
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 372,
+    "startByteOffset": 368,
     "dims": [
       6
     ],
@@ -1453,7 +1427,7 @@
       1
     ],
     "count": 6,
-    "regBase": 186,
+    "regBase": 184,
     "regStride": 2
   },
   "Parameters.Admittance_Control_M": {
@@ -1462,7 +1436,7 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 396,
+    "startByteOffset": 392,
     "dims": [
       6
     ],
@@ -1470,7 +1444,7 @@
       1
     ],
     "count": 6,
-    "regBase": 198,
+    "regBase": 196,
     "regStride": 2
   },
   "Parameters.Admittance_Control_K": {
@@ -1479,7 +1453,7 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 420,
+    "startByteOffset": 416,
     "dims": [
       6
     ],
@@ -1487,7 +1461,7 @@
       1
     ],
     "count": 6,
-    "regBase": 210,
+    "regBase": 208,
     "regStride": 2
   },
   "Parameters.Admittance_Control_B": {
@@ -1496,7 +1470,7 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 444,
+    "startByteOffset": 440,
     "dims": [
       6
     ],
@@ -1504,7 +1478,7 @@
       1
     ],
     "count": 6,
-    "regBase": 222,
+    "regBase": 220,
     "regStride": 2
   },
   "Parameters.Tip": {
@@ -1513,7 +1487,7 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 468,
+    "startByteOffset": 464,
     "dims": [
       6
     ],
@@ -1521,7 +1495,7 @@
       1
     ],
     "count": 6,
-    "regBase": 234,
+    "regBase": 232,
     "regStride": 2
   },
   "Parameters.LoadMass": {
@@ -1530,11 +1504,11 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 492,
+    "startByteOffset": 488,
     "dims": [],
     "strides": [],
     "count": 1,
-    "regBase": 246,
+    "regBase": 244,
     "regStride": 2
   },
   "Parameters.LoadCOG": {
@@ -1543,7 +1517,7 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 496,
+    "startByteOffset": 492,
     "dims": [
       3
     ],
@@ -1551,7 +1525,7 @@
       1
     ],
     "count": 3,
-    "regBase": 248,
+    "regBase": 246,
     "regStride": 2
   },
   "Parameters.LoadInertia6": {
@@ -1560,7 +1534,7 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 508,
+    "startByteOffset": 504,
     "dims": [
       6
     ],
@@ -1568,7 +1542,7 @@
       1
     ],
     "count": 6,
-    "regBase": 254,
+    "regBase": 252,
     "regStride": 2
   },
   "Parameters.Analog_Ouput": {
@@ -1577,7 +1551,7 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 532,
+    "startByteOffset": 528,
     "dims": [
       8
     ],
@@ -1585,7 +1559,7 @@
       1
     ],
     "count": 8,
-    "regBase": 266,
+    "regBase": 264,
     "regStride": 2
   },
   "Parameters.TCP_Leveling_Direction": {
@@ -1594,7 +1568,7 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 564,
+    "startByteOffset": 560,
     "dims": [
       3
     ],
@@ -1602,7 +1576,7 @@
       1
     ],
     "count": 3,
-    "regBase": 282,
+    "regBase": 280,
     "regStride": 2
   },
   "Parameters.TCP_Leveling_Axis": {
@@ -1611,11 +1585,11 @@
     "baseType": "DWORD",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 576,
+    "startByteOffset": 572,
     "dims": [],
     "strides": [],
     "count": 1,
-    "regBase": 288,
+    "regBase": 286,
     "regStride": 2
   },
   "Parameters.TCP_Move_Rel_Distance": {
@@ -1624,11 +1598,11 @@
     "baseType": "REAL",
     "area": "HoldingRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 580,
+    "startByteOffset": 576,
     "dims": [],
     "strides": [],
     "count": 1,
-    "regBase": 290,
+    "regBase": 288,
     "regStride": 2
   },
   "Status.Actual_Movement_Mode": {
@@ -1657,13 +1631,26 @@
     "regBase": 2,
     "regStride": 2
   },
+  "Status.ERROR_Module": {
+    "typeName": "Status",
+    "field": "ERROR_Module",
+    "baseType": "DWORD",
+    "area": "InputRegisters",
+    "bytesPerElem": 4,
+    "startByteOffset": 8,
+    "dims": [],
+    "strides": [],
+    "count": 1,
+    "regBase": 4,
+    "regStride": 2
+  },
   "Status.Joint_Error_ID": {
     "typeName": "Status",
     "field": "Joint_Error_ID",
     "baseType": "DWORD",
     "area": "InputRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 8,
+    "startByteOffset": 12,
     "dims": [
       6
     ],
@@ -1671,7 +1658,7 @@
       1
     ],
     "count": 6,
-    "regBase": 4,
+    "regBase": 6,
     "regStride": 2
   },
   "Status.Joint_State": {
@@ -1680,7 +1667,7 @@
     "baseType": "DWORD",
     "area": "InputRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 32,
+    "startByteOffset": 36,
     "dims": [
       6
     ],
@@ -1688,7 +1675,7 @@
       1
     ],
     "count": 6,
-    "regBase": 16,
+    "regBase": 18,
     "regStride": 2
   },
   "Status.Joint_Actual_Position": {
@@ -1697,7 +1684,7 @@
     "baseType": "REAL",
     "area": "InputRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 56,
+    "startByteOffset": 60,
     "dims": [
       6
     ],
@@ -1705,7 +1692,7 @@
       1
     ],
     "count": 6,
-    "regBase": 28,
+    "regBase": 30,
     "regStride": 2
   },
   "Status.Joint_Actual_Velocity": {
@@ -1714,7 +1701,7 @@
     "baseType": "REAL",
     "area": "InputRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 80,
+    "startByteOffset": 84,
     "dims": [
       6
     ],
@@ -1722,7 +1709,7 @@
       1
     ],
     "count": 6,
-    "regBase": 40,
+    "regBase": 42,
     "regStride": 2
   },
   "Status.Joint_Actual_Current": {
@@ -1731,7 +1718,7 @@
     "baseType": "REAL",
     "area": "InputRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 104,
+    "startByteOffset": 108,
     "dims": [
       6
     ],
@@ -1739,7 +1726,7 @@
       1
     ],
     "count": 6,
-    "regBase": 52,
+    "regBase": 54,
     "regStride": 2
   },
   "Status.Joint_Actual_Torque": {
@@ -1748,7 +1735,7 @@
     "baseType": "REAL",
     "area": "InputRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 128,
+    "startByteOffset": 132,
     "dims": [
       6
     ],
@@ -1756,7 +1743,7 @@
       1
     ],
     "count": 6,
-    "regBase": 64,
+    "regBase": 66,
     "regStride": 2
   },
   "Status.Flange_Pose": {
@@ -1765,7 +1752,7 @@
     "baseType": "REAL",
     "area": "InputRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 152,
+    "startByteOffset": 156,
     "dims": [
       6
     ],
@@ -1773,7 +1760,7 @@
       1
     ],
     "count": 6,
-    "regBase": 76,
+    "regBase": 78,
     "regStride": 2
   },
   "Status.TCP_Pose": {
@@ -1782,7 +1769,7 @@
     "baseType": "REAL",
     "area": "InputRegisters",
     "bytesPerElem": 4,
-    "startByteOffset": 176,
+    "startByteOffset": 180,
     "dims": [
       6
     ],
@@ -1790,20 +1777,7 @@
       1
     ],
     "count": 6,
-    "regBase": 88,
-    "regStride": 2
-  },
-  "Status.ERROR_Module": {
-    "typeName": "Status",
-    "field": "ERROR_Module",
-    "baseType": "DWORD",
-    "area": "InputRegisters",
-    "bytesPerElem": 4,
-    "startByteOffset": 200,
-    "dims": [],
-    "strides": [],
-    "count": 1,
-    "regBase": 100,
+    "regBase": 90,
     "regStride": 2
   }
 }

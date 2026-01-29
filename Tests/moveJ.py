@@ -21,7 +21,8 @@ from PythonWorkFlow.Core.Basic import ControlMode
 # 配置区域
 # ==============================================================================
 CODESYS_CONFIG = {
-    "target_ip": "192.168.1.253", # TODO: 修改为实际 IP
+    # "target_ip": "192.168.1.253", # TODO: 修改为实际 PLC IP
+    "target_ip": "192.168.0.155",
     "port": 502,
     "unit_id": 1
 }
@@ -97,26 +98,26 @@ async def check_initialization(rc: RobotCore):
     status = rc.robot_status
     
     if not status.PowerOn:
-        print(" 机器人未处于使能状态。 ")
+        print("警告: 机器人未处于使能状态 (PowerOn=False)")
     else:
         print("状态检查: 机器人已使能")
 
 async def test_robot_enable(rc: RobotCore):
     """测试使能"""
     print("\n[2/4] 执行 RobotEnable...")
-    rc.RobotEnable()  # 现在是同步方法
+    rc.RobotEnable_sync()  # 使用同步版本，避免事件循环冲突
     # 等待状态更新
     await asyncio.sleep(1.0)
     
     if rc.robot_status.PowerOn:
         print("机器人使能成功！")
     else:
-        print("警告：使能指令已发送，但反馈状态仍为 False。 请检查地址表是否配置正确！！！")
+        print("警告：使能指令已发送，但反馈状态仍为 False")
 
 async def test_set_mode(rc: RobotCore):
     """设置 MoveJoint 模式"""
     print("\n[3/4] 设置控制模式为 MoveJoint...")
-    rc.SetControlMode_sync(ControlMode.MoveJoint)
+    rc.SetControlMode_sync(ControlMode.MoveJoint)  # 使用 _sync 版本
     await asyncio.sleep(0.5)
 
 async def test_csv_trajectory(rc: RobotCore, csv_path: str):
@@ -143,7 +144,7 @@ async def test_csv_trajectory(rc: RobotCore, csv_path: str):
 
         # 2. 发送指令
         print("发送 MoveJ 指令...")
-        rc.MoveJ(rad_vals)  # 现在是同步方法
+        rc.MoveJ(rad_vals)
 
         # 3. 等待运动开始 (Checking Moving rising edge)
         # 给一点时间让指令下发并让状态变为 Moving
@@ -173,6 +174,7 @@ async def test_csv_trajectory(rc: RobotCore, csv_path: str):
         print("\n到位。")
         
         # 显示当前实际位置
+        # 注意：JointActualPosition 存储的是弧度值，需要转换成度数显示
         actual_rad = rc.robot_status.JointActualPosition
         actual_deg = [math.degrees(r) for r in actual_rad]
         print(f"当前(deg): {[round(v, 2) for v in actual_deg]}")

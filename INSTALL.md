@@ -36,7 +36,7 @@ python -c "import Communication; import PythonWorkFlow; print('安装成功！')
 ## 运行测试脚本
 确保在项目根目录下运行：
 ```bash
-python Tests\moveJ_test.py
+python Tests\moveJ.py
 ```
 
 **注意**：使用此方法时，必须在项目根目录下运行，否则会找不到模块。

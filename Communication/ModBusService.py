@@ -302,6 +302,10 @@ class ModBusService:
                 s.JointActualVelocity[i] = self._get_f32(all_regs, status_start, get_addr("Status.Joint_Actual_Velocity", i+1))
                 s.JointActualCurrent[i]  = self._get_f32(all_regs, status_start, get_addr("Status.Joint_Actual_Current", i+1))
                 s.JointActualTorque[i]   = self._get_f32(all_regs, status_start, get_addr("Status.Joint_Actual_Torque", i+1))
+            
+            # 读取 TCP 实际位置
+            for i in range(6):
+                s.TcpPose[i] = self._get_f32(all_regs, status_start, get_addr("Status.TCP_Pose", i+1))
 
             return s
 

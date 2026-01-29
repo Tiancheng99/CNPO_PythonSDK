@@ -15,6 +15,31 @@ from pymodbus.client import ModbusTcpClient as _PymodbusTcpClient  # type: ignor
 _HAS_PYMODBUS = True
 
 
+# 检测 pymodbus 版本支持的参数名
+import inspect
+_UNIT_PARAM_NAME = None
+try:
+    # 创建临时客户端实例检测参数名
+    _temp_client = _PymodbusTcpClient("localhost", port=502)
+    sig = inspect.signature(_temp_client.read_holding_registers)
+    
+    if 'device_id' in sig.parameters:
+        _UNIT_PARAM_NAME = 'device_id'
+    elif 'slave' in sig.parameters:
+        _UNIT_PARAM_NAME = 'slave'
+    elif 'unit' in sig.parameters:
+        _UNIT_PARAM_NAME = 'unit'
+    else:
+        # 默认使用 device_id (pymodbus 3.x 最新版本)
+        _UNIT_PARAM_NAME = 'device_id'
+except Exception as e:
+    # 如果检测失败，默认使用 device_id
+    _UNIT_PARAM_NAME = 'device_id'
+    print(f"[警告] pymodbus 参数检测失败: {e}，使用默认值: device_id")
+
+print(f"[ModBusCommunicator] 检测到 pymodbus 使用参数名: {_UNIT_PARAM_NAME}")
+
+
 class ModBusCommunicator:
     AREA_COILS = "Coils"
     AREA_INPUTSTATUS = "InputStatus"
@@ -22,11 +47,7 @@ class ModBusCommunicator:
     AREA_INPUT = "InputRegisters"
 
     # 地址簿与硬件地址偏移映射表
-    # 某些参数的硬件地址与地址簿定义不符，需要偏移修正
-    # key: "Parameters.xxx" -> value: 偏移量（负数表示向下偏移）
-    ADDRESS_OFFSET_MAP = {
-        'Parameters.Joint_Target_Position': -2,  # 地址簿88，实际硬件在86，偏移-2
-    }
+    ADDRESS_OFFSET_MAP = {}
 
     def __init__(self, host: str, port: int, unit_id: int = 1,
                  swap_words: bool = False, swap_bytes_in_word: bool = False):
@@ -44,6 +65,10 @@ class ModBusCommunicator:
         """应用地址偏移，适配硬件与地址簿的差异"""
         offset = self.ADDRESS_OFFSET_MAP.get(key, 0)
         return addr + offset
+    
+    def _get_unit_kwargs(self) -> dict:
+        """获取 unit_id 参数的字典，自动适配不同 pymodbus 版本"""
+        return {_UNIT_PARAM_NAME: self.unit_id}
 
     def _create_client(self) -> _PymodbusTcpClient:
         """创建 pymodbus TCP 客户端"""
@@ -134,6 +159,8 @@ class ModBusCommunicator:
         area, addr, words = self._resolve_address(book, key, list(idx))
         if words != 2:
             raise ValueError("目标不是 2-寄存器类型")
+        # 应用地址偏移（与 write_real 保持一致）
+        addr = self._apply_address_offset(key, addr)
         regs = self._read_registers(area, addr, 2)
         return registers_to_float(regs[0], regs[1], swap_words=self.swap_words,
                                    swap_bytes_in_word=self.swap_bytes_in_word)
@@ -155,6 +182,8 @@ class ModBusCommunicator:
         area, addr, words = self._resolve_address(book, key, list(idx))
         if words != 2:
             raise ValueError("目标不是 2-寄存器类型")
+        # 应用地址偏移（与 write_dword 保持一致）
+        addr = self._apply_address_offset(key, addr)
         regs = self._read_registers(area, addr, 2)
         return registers_to_dword(regs[0], regs[1], swap_words=self.swap_words,
                                   swap_bytes_in_word=self.swap_bytes_in_word)
@@ -242,7 +271,7 @@ class ModBusCommunicator:
             rr = self.client.read_holding_registers(
                 address=addr,
                 count=to_read,
-                device_id=self.unit_id
+                **self._get_unit_kwargs()
             )
             if hasattr(rr, 'registers'):
                 result.extend(rr.registers)
@@ -270,8 +299,8 @@ class ModBusCommunicator:
         try:
             rr = self.client.read_coils(
                 address=addr, 
-                count=count,   
-                device_id=self.unit_id 
+                count=count,
+                **self._get_unit_kwargs()
             )
             
             if hasattr(rr, 'bits'):
@@ -290,8 +319,8 @@ class ModBusCommunicator:
         try:
             response = self.client.read_discrete_inputs(
                 address=addr, 
-                count=count,   
-                device_id=self.unit_id 
+                count=count,
+                **self._get_unit_kwargs()
             )
             
             if hasattr(response, 'isError') and response.isError():
@@ -315,14 +344,14 @@ class ModBusCommunicator:
             if area.lower() == self.AREA_HOLDING.lower():
                 rr = self.client.read_holding_registers(
                     address=addr,  
-                    count=count,   
-                    device_id=self.unit_id  
+                    count=count,
+                    **self._get_unit_kwargs()
                 )
             elif area.lower() == self.AREA_INPUT.lower():
                 rr = self.client.read_input_registers(
                     address=addr,
                     count=count,
-                    device_id=self.unit_id
+                    **self._get_unit_kwargs()
                 )
             else:
                 raise ValueError(f"不支持的寄存器区域: {area}")
@@ -342,8 +371,8 @@ class ModBusCommunicator:
         try:
             rr = self.client.read_input_registers(
                 address=addr,  
-                count=count,   
-                device_id=self.unit_id 
+                count=count,
+                **self._get_unit_kwargs()
             )
             
             if hasattr(rr, 'registers'):
@@ -363,7 +392,7 @@ class ModBusCommunicator:
         try:
             if hasattr(self.client, 'write_coil'):
                
-                result = self.client.write_coil(addr, value, device_id=self.unit_id)
+                result = self.client.write_coil(addr, value, **self._get_unit_kwargs())
             
                 return
 
@@ -381,8 +410,8 @@ class ModBusCommunicator:
            
             response = self.client.write_register(
                 address=addr,       
-                value=value,       
-                device_id=self.unit_id 
+                value=value,
+                **self._get_unit_kwargs()
             )
             
             if response.isError():
@@ -407,8 +436,8 @@ class ModBusCommunicator:
             
             response = self.client.write_registers(
                 address=addr,       
-                values=values,      
-                device_id=self.unit_id 
+                values=values,
+                **self._get_unit_kwargs()
             )
             
             if response.isError():
