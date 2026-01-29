@@ -35,8 +35,14 @@ python -c "import Communication; import PythonWorkFlow; print('安装成功！')
 
 ## 运行测试脚本
 确保在项目根目录下运行：
+1. moveJ读取csv文件并运行
 ```bash
 python Tests\moveJ.py
+```
+
+2. 各类功能示例
+```bash
+python Tests\simple.py
 ```
 
 **注意**：使用此方法时，必须在项目根目录下运行，否则会找不到模块。
@@ -74,3 +80,19 @@ Remove-Item "$sitePackages\robot-sdk.egg-link" -Force
 # 3. 重新安装
 $env:PYTHONUTF8=1; pip install -e .
 ```
+
+### Q: 运行时出现以下错误
+```
+连接成功！启动 ModBusService...
+❌ 读取参数失败: ModbusClientMixin.read_holding_registers() got an unexpected keyword argument 'device_id'
+[ERROR] 写入单个线圈失败: ModbusClientMixin.write_coil() got an unexpected keyword argument 'device_id'
+Traceback (most recent call last):
+  File "E:\mecheye_nai_robot_tcp\SDKPythonV2-main\Communication\ModBusService.py", line 329, in _read_parameters_once_safe
+    regs_part1 = self._com.read_holding_registers_block(p_start, 125)
+  File "E:\mecheye_nai_robot_tcp\SDKPythonV2-main\Communication\ModBusCommunicator.py", line 242, in read_holding_registers_block
+    rr = self.client.read_holding_registers(
+TypeError: ModbusClientMixin.read_holding_registers() got an unexpected keyword argument 'device_id'
+```
+
+A: 检查自己的pymodbus版本，最好为3.11.**
+
