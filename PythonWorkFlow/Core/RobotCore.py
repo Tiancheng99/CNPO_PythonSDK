@@ -54,6 +54,7 @@ class RobotCore:
 
         # 连接状态标记
         self.connected = False
+        self.init_complete = False  # SDK初始化完成标志
 
         # 尝试连接并初始化
         self._initialize_connection()
@@ -139,6 +140,9 @@ class RobotCore:
                 
                 # 4. 下发默认参数 (如果需要覆盖设备参数)
                 await self.RobotSetParameters(self.robot_parameter)
+
+                # 标记SDK初始化完成
+                self.init_complete = True
                 
                 print("机器人逻辑初始化完成！")
             except Exception as e:
@@ -179,16 +183,6 @@ class RobotCore:
             print("机器人失能指令发送成功")
         except Exception as e:
             print(f"发送失能指令失败：{e}")
-            raise
-
-    async def RobotStop(self) -> None:
-        """停止机器人所有运动 (Pulse)"""
-        if not self.connected: return
-        try:
-            await self._service.pulse_bool('Instructions.Stop_Execute', 30)
-            print("机器人已停止所有运动")
-        except Exception as e:
-            print(f"机器人停止失败：{e}")
             raise
 
     async def SetControlMode(self, mode: ControlMode) -> None:
@@ -839,17 +833,7 @@ class RobotCore:
     
     def activateMoveLinear_sync(self) -> None:
         """切换到 MoveLinear 模式（同步版本）"""
-        self._run_async(self.activateMoveLinear())
-    
-    def GetJointAngles(self) -> List[float]:
-        """获取当前关节角度（度）"""
-        import math
-        actual_rad = self.robot_status.JointActualPosition
-        return [math.degrees(r) for r in actual_rad]
-    
-    def GetTCPPose(self) -> List[float]:
-        """获取当前TCP位姿 [X, Y, Z, Roll, Pitch, Yaw]"""
-        return self.robot_status.TcpPose
+        self._run_async(self.activateMoveLinear())    
     
     # ------------------------------
     # 状态获取方法

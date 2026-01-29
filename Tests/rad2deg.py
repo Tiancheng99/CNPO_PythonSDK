@@ -18,11 +18,11 @@ df = pd.read_csv(io.StringIO(csv_data))
 joint_columns = ['J1', 'J2', 'J3', 'J4', 'J5', 'J6']
 
 # 将弧度转换为角度
-# 角度 = 弧度 * (180 / pi)
-# df[joint_columns] = df[joint_columns].apply(lambda x: x * 180 / np.pi)
+角度 = 弧度 * (180 / pi)
+df[joint_columns] = df[joint_columns].apply(lambda x: x * 180 / np.pi)
 
 # 将角度转换为弧度
-df[joint_columns] = df[joint_columns].apply(lambda x: x * (np.pi / 180.0))
+# df[joint_columns] = df[joint_columns].apply(lambda x: x * (np.pi / 180.0))
 
 
 # 重命名列以区分单位 (可选)

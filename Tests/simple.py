@@ -53,7 +53,7 @@ async def initialize_robot(core: RobotCore) -> bool:
     """初始化机器人"""
     print("\n[1/3] 等待连接...", end=" ", flush=True)
     for _ in range(30):
-        if core.connected and core.robot_status.Initialized:
+        if core.connected and core.init_complete:
             print("✓")
             break
         await asyncio.sleep(0.1)
@@ -127,15 +127,24 @@ async def demo_basic_functions(core: RobotCore):
     print(f"\n当前关节角度(弧度): {[round(v, 4) for v in angles_rad]}")
     print(f"当前关节角度(度数): {[round(v, 2) for v in angles_deg]}")
     
-    # ========== 3. 获取TCP位姿 ==========
-    print("\n【3】GetTcpPose - 获取TCP位姿")
+    # ========== 3. 获取法兰位姿和TCP位姿 ==========
+    print("\n【5】GetFlangePose & GetTcpPose - 获取法兰位姿和TCP位姿")
     print("-" * 60)
-    print("用法: core.GetTcpPose()")
-    print("说明: 获取当前TCP位姿 [X, Y, Z, Roll, Pitch, Yaw]")
+    print("用法: core.GetFlangePose()  # 获取法兰位姿")
+    print("      core.GetTcpPose()     # 获取TCP位姿")
+    print("说明: 位姿格式 [X, Y, Z, Roll, Pitch, Yaw]")
     print("      X/Y/Z单位:mm, Roll/Pitch/Yaw单位:弧度")
+    print("      TCP位姿 = 法兰位姿 + 工具坐标偏移(Tip)")
     
+    flange_pose = core.GetFlangePose()
     tcp_pose = core.GetTcpPose()
-    print(f"\n当前TCP位姿: {[round(v, 3) for v in tcp_pose]}")
+    
+    print(f"\n法兰位姿(Flange): {[round(v, 3) for v in flange_pose]}")
+    if flange_pose:
+        print(f"  位置(mm): X={flange_pose[0]:.2f}, Y={flange_pose[1]:.2f}, Z={flange_pose[2]:.2f}")
+        print(f"  姿态(rad): Roll={flange_pose[3]:.4f}, Pitch={flange_pose[4]:.4f}, Yaw={flange_pose[5]:.4f}")
+    
+    print(f"\nTCP位姿(Tool Center Point): {[round(v, 3) for v in tcp_pose]}")
     if tcp_pose:
         print(f"  位置(mm): X={tcp_pose[0]:.2f}, Y={tcp_pose[1]:.2f}, Z={tcp_pose[2]:.2f}")
         print(f"  姿态(rad): Roll={tcp_pose[3]:.4f}, Pitch={tcp_pose[4]:.4f}, Yaw={tcp_pose[5]:.4f}")
@@ -210,7 +219,7 @@ async def demo_basic_functions(core: RobotCore):
     
     target_l = [-280, -190.388, 327.169, 1.57, 0, 0.00]
     print(f"\n执行: core.MoveL({target_l})")
-    print(f"运动前 - Moving: {core.robot_status.Moving}, TCP: {core.GetTCPPose()}")
+    print(f"运动前 - Moving: {core.robot_status.Moving}, TCP: {core.GetTcpPose()}")
     input("  按 Enter 开始运动...")
     
     core.MoveL(target_l)
@@ -222,7 +231,7 @@ async def demo_basic_functions(core: RobotCore):
     
     # 读取实际TCP位置验证
     await asyncio.sleep(0.3)
-    actual_pose = core.GetTCPPose()
+    actual_pose = core.GetTcpPose()
     print(f"\n目标位置: {target_l}")
     print(f"实际位置: {[f'{v:.2f}' for v in actual_pose]}")
     
