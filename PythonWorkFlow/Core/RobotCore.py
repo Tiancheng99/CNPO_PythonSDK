@@ -872,6 +872,20 @@ class RobotCore:
             import math
             return [math.degrees(r) for r in joint_rad]
         return list(joint_rad)
+
+    def GetFlangePose(self) -> List[float]:
+        """
+        获取当前法兰位姿
+        
+        Returns:
+            [X, Y, Z, Roll, Pitch, Yaw]
+            X/Y/Z单位: mm
+            Roll/Pitch/Yaw单位: 弧度
+        """
+        flange_pose = self.robot_status.FlangePose
+        if not flange_pose:
+            return [0.0] * 6
+        return list(flange_pose)
     
     def GetTcpPose(self) -> List[float]:
         """
