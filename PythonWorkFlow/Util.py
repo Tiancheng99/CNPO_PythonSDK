@@ -53,14 +53,10 @@ def print_object(obj, indent=0):
 
 
 def transform_json(input_json):
-    # 提取 jointPositions
+    # 提取 jointPositions，关节数量由上游状态自适应提供
     joint_positions = {
-        "J1": input_json["Joints"]["J1"]["ActualPosition"],
-        "J2": input_json["Joints"]["J2"]["ActualPosition"],
-        "J3": input_json["Joints"]["J3"]["ActualPosition"],
-        "J4": input_json["Joints"]["J4"]["ActualPosition"],
-        "J5": input_json["Joints"]["J5"]["ActualPosition"],
-        "J6": input_json["Joints"]["J6"]["ActualPosition"],
+        joint_name: joint_data.get("ActualPosition", 0.0)
+        for joint_name, joint_data in input_json.get("Joints", {}).items()
     }
 
     pose = {

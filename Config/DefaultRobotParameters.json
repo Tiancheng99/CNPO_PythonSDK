@@ -1,41 +1,194 @@
 {
+  "JointCount": 7,
   "DHParameters": [
-    [ 0.0, 0.0, 157.8301, 0.0 ],
-    [ 0.0, 1.570796, 0.0, 0 ],
-    [ -270.1666, 0.0, 0.0, 0 ],
-    [ -270.506, 0, 131.1573, 0.0 ],
-    [ 0.0, 1.570796, 108.4209, 0.0 ],
-    [ 0.0, -1.570796, 68.5983, 0.0 ]
+    [
+      0.0,
+      0.0,
+      157.8301,
+      0.0
+    ],
+    [
+      0.0,
+      1.570796,
+      0.0,
+      0
+    ],
+    [
+      -270.1666,
+      0.0,
+      0.0,
+      0
+    ],
+    [
+      -270.506,
+      0,
+      131.1573,
+      0.0
+    ],
+    [
+      0.0,
+      1.570796,
+      108.4209,
+      0.0
+    ],
+    [
+      0.0,
+      -1.570796,
+      68.5983,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
   ],
-  "CalibrationJointPositions": [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ],
+  "CalibrationJointPositions": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
   "MovementMode": 0,
   "Override": 1.0,
-  "JointJogVelocity": [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ],
-  "InchDistance": [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ],
-  "JointTargetPosition": [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ],
-  "JointReferenceVelocity": [ 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ],
-  "JointReferenceAcceleration": [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ],
-  "JointReferenceJerk": [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ],
+  "JointJogVelocity": [
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1
+  ],
+  "InchDistance": [
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1
+  ],
+  "JointTargetPosition": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "JointReferenceVelocity": [
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1
+  ],
+  "JointReferenceAcceleration": [
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5
+  ],
+  "JointReferenceJerk": [
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5
+  ],
   "MoveJReferenceVelocity": 0.2,
   "MoveJReferenceAcceleration": 0.5,
   "MoveJReferenceDeceleration": 0.5,
   "TCPJogLinearVelocity": 3.0,
   "TCPJogAngularVelocity": 0.05,
   "TCPInchDistance": 1.0,
-  "TCPTargetPose": [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ],
-  "TCPMidPose": [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ],
-  "TCPRelativeDistance": [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ],
+  "TCPTargetPose": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "TCPMidPose": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "TCPRelativeDistance": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
   "TCPReferenceLinearVelocity": 30,
   "TCPReferenceLinearAcceleration": 20.0,
   "TCPReferenceLinearDeceleration": 20.0,
   "TCPReferenceAngularVelocity": 0.05,
   "TCPReferenceAngularAcceleration": 10.0,
   "TCPReferenceAngularDeceleration": 10.0,
-  "TCPTargetVelocity": [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ],
-  "AdmittanceControlM": [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ],
-  "AdmittanceControlK": [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ],
-  "AdmittanceControlB": [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ],
-  "Tip": [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ],
+  "TCPTargetVelocity": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "AdmittanceControlM": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "AdmittanceControlK": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "AdmittanceControlB": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "Tip": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
   "LoadMass": 0.0,
-  "LoadCOG": [ 0.0, 0.0, 0.0 ]
+  "LoadCOG": [
+    0.0,
+    0.0,
+    0.0
+  ]
 }

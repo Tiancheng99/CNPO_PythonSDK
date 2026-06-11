@@ -1,0 +1,43 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Build and package outputs
+build/
+dist/
+*.spec.bak
+*.egg-info/
+
+# PyInstaller runtime/log outputs
+*.log
+
+# Local/generated data
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE/editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local installers and binaries
+*.exe
+*.msi
+*.zip
+*.tar.gz
+
+# Keep source-controlled PyInstaller spec
+!robot_gui.spec

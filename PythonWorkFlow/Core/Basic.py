@@ -4,17 +4,19 @@ import json
 from enum import Enum
 
 class RobotParameters:
-    def __init__(self, json_file: str):
+    def __init__(self, json_file: str, joint_count: Optional[int] = None):
         """从JSON字典初始化机器人参数"""
         # 读取JSON文件
         json_data = self._load_json_file(json_file)
 
-        # DH参数（6个关节，每个关节4个参数）
-        self.DH_Parameters = json_data.get("DHParameters", [])
-        self._validate_dh_parameters()  # 校验为6x4数组
+        self.JointCount = self._resolve_joint_count(json_data, joint_count)
 
-        # 校准关节位置（6个关节的校准位置）
-        self.CalibrationJointPositions = self._get_array_param(json_data, "CalibrationJointPositions", 6, 0.0)
+        # DH参数（每个关节4个参数）
+        self.DH_Parameters = json_data.get("DHParameters", [])
+        self._validate_dh_parameters()
+
+        # 校准关节位置
+        self.CalibrationJointPositions = self._get_array_param(json_data, "CalibrationJointPositions", self.JointCount, 0.0)
 
         # 运动模式（整数枚举，对应ControlMode）
         self.MovementMode = int(json_data.get("MovementMode", 0))
@@ -22,23 +24,23 @@ class RobotParameters:
         # 速度倍率（0-1.0，用于缩放所有运动速度）
         self.Override = float(json_data.get("Override", 1.0))
 
-        # 关节点动速度（6个关节）
-        self.JointJogVelocity = self._get_array_param(json_data, "JointJogVelocity", 6, 0.1)
+        # 关节点动速度
+        self.JointJogVelocity = self._get_array_param(json_data, "JointJogVelocity", self.JointCount, 0.1)
 
-        # 关节点动增量距离（6个关节）
-        self.InchDistance = self._get_array_param(json_data, "InchDistance", 6, 1.0)
+        # 关节点动增量距离
+        self.InchDistance = self._get_array_param(json_data, "InchDistance", self.JointCount, 1.0)
 
-        # 关节目标位置（6个关节）
-        self.JointTargetPosition = self._get_array_param(json_data, "JointTargetPosition", 6, 0.0)
+        # 关节目标位置
+        self.JointTargetPosition = self._get_array_param(json_data, "JointTargetPosition", self.JointCount, 0.0)
 
-        # 关节参考速度（6个关节）
-        self.JointReferenceVelocity = self._get_array_param(json_data, "JointReferenceVelocity", 6, 3.0)
+        # 关节参考速度
+        self.JointReferenceVelocity = self._get_array_param(json_data, "JointReferenceVelocity", self.JointCount, 3.0)
 
-        # 关节参考加速度（6个关节）
-        self.JointReferenceAcceleration = self._get_array_param(json_data, "JointReferenceAcceleration", 6, 10.0)
+        # 关节参考加速度
+        self.JointReferenceAcceleration = self._get_array_param(json_data, "JointReferenceAcceleration", self.JointCount, 10.0)
 
-        # 关节参考加加速度（6个关节）
-        self.JointReferenceJerk = self._get_array_param(json_data, "JointReferenceJerk", 6, 10.0)
+        # 关节参考加加速度
+        self.JointReferenceJerk = self._get_array_param(json_data, "JointReferenceJerk", self.JointCount, 10.0)
 
         # MoveJ（关节空间运动）参数
         self.MoveJReferenceVelocity = float(json_data.get("MoveJReferenceVelocity", 0.1))
@@ -104,10 +106,31 @@ class RobotParameters:
             raise RuntimeError(f"读取JSON文件失败：{e}")
 
     # 辅助方法：参数校验与补全
+    def _resolve_joint_count(self, json_data: dict, joint_count: Optional[int]) -> int:
+        if joint_count is None:
+            joint_count = json_data.get("JointCount")
+        if joint_count is None:
+            dh = json_data.get("DHParameters", [])
+            joint_count = len(dh) if dh else 6
+        try:
+            count = int(joint_count)
+        except (TypeError, ValueError):
+            print(f"[配置提醒] JointCount={joint_count!r} 无效，已回退为 6")
+            count = 6
+        if count <= 0:
+            print(f"[配置提醒] JointCount={count} 无效，已回退为 6")
+            count = 6
+        return count
+
     def _validate_dh_parameters(self):
-        """校验并补全DH参数为6x4的格式"""
+        """校验并补全DH参数为 JointCount x 4 的格式"""
         valid_dh = []
-        for i in range(6):  # 6个关节
+        if len(self.DH_Parameters) != self.JointCount:
+            print(
+                f"[配置提醒] DHParameters 行数为 {len(self.DH_Parameters)}，"
+                f"JointCount 为 {self.JointCount}，将自动补齐/截断，请检查人工配置。"
+            )
+        for i in range(self.JointCount):
             if i < len(self.DH_Parameters):
                 joint_params = self.DH_Parameters[i]
                 valid_joint = [float(joint_params[j]) if j < len(joint_params) else 0.0 for j in range(4)]
@@ -126,6 +149,14 @@ class RobotParameters:
         :return: 补全后的数组
         """
         arr = json_data.get(key, [])
+        if not isinstance(arr, list):
+            print(f"[配置提醒] {key} 应为数组，实际为 {type(arr).__name__}，将使用默认值，请检查人工配置。")
+            arr = []
+        if len(arr) != length:
+            print(
+                f"[配置提醒] {key} 长度为 {len(arr)}，期望 {length}，"
+                f"将自动补齐/截断，请检查人工配置。"
+            )
         valid_arr = []
         for i in range(length):
             if i < len(arr):
@@ -146,6 +177,7 @@ class ControlMode(Enum):
     MoveCircle = 6
     TcpJog = 7
     TcpInch = 8
+    ContinueMove = 13
 
 
 class JogMode(Enum):
@@ -173,36 +205,28 @@ class JointStatus:
 class JointsStatus:
     """所有关节的状态集合"""
     def __init__(self, json_data: Dict):
-        # 解析J1-J6的状态
-        self.J1 = JointStatus(json_data.get("J1", {}))
-        self.J2 = JointStatus(json_data.get("J2", {}))
-        self.J3 = JointStatus(json_data.get("J3", {}))
-        self.J4 = JointStatus(json_data.get("J4", {}))
-        self.J5 = JointStatus(json_data.get("J5", {}))
-        self.J6 = JointStatus(json_data.get("J6", {}))
+        self._joint_names = sorted(
+            json_data.keys(),
+            key=lambda name: int(name[1:]) if isinstance(name, str) and name.startswith("J") and name[1:].isdigit() else 9999
+        )
+        if not self._joint_names:
+            self._joint_names = [f"J{i+1}" for i in range(6)]
+        for joint_name in self._joint_names:
+            setattr(self, joint_name, JointStatus(json_data.get(joint_name, {})))
 
     def to_dict(self) -> Dict:
         """转换为字典，用于序列化"""
-        return {
-            "J1": {"ActualPosition": self.J1.ActualPosition, "ActualVelocity": self.J1.ActualVelocity,
-                   "ActualAcceleration": self.J1.ActualAcceleration, "ActualCurrent": self.J1.ActualCurrent,
-                   "Statusof402": self.J1.Statusof402},
-            "J2": {"ActualPosition": self.J2.ActualPosition, "ActualVelocity": self.J2.ActualVelocity,
-                   "ActualAcceleration": self.J2.ActualAcceleration, "ActualCurrent": self.J2.ActualCurrent,
-                   "Statusof402": self.J2.Statusof402},
-            "J3": {"ActualPosition": self.J3.ActualPosition, "ActualVelocity": self.J3.ActualVelocity,
-                   "ActualAcceleration": self.J3.ActualAcceleration, "ActualCurrent": self.J3.ActualCurrent,
-                   "Statusof402": self.J3.Statusof402},
-            "J4": {"ActualPosition": self.J4.ActualPosition, "ActualVelocity": self.J4.ActualVelocity,
-                   "ActualAcceleration": self.J4.ActualAcceleration, "ActualCurrent": self.J4.ActualCurrent,
-                   "Statusof402": self.J4.Statusof402},
-            "J5": {"ActualPosition": self.J5.ActualPosition, "ActualVelocity": self.J5.ActualVelocity,
-                   "ActualAcceleration": self.J5.ActualAcceleration, "ActualCurrent": self.J5.ActualCurrent,
-                   "Statusof402": self.J5.Statusof402},
-            "J6": {"ActualPosition": self.J6.ActualPosition, "ActualVelocity": self.J6.ActualVelocity,
-                   "ActualAcceleration": self.J6.ActualAcceleration, "ActualCurrent": self.J6.ActualCurrent,
-                   "Statusof402": self.J6.Statusof402}
-        }
+        result = {}
+        for joint_name in self._joint_names:
+            joint = getattr(self, joint_name)
+            result[joint_name] = {
+                "ActualPosition": joint.ActualPosition,
+                "ActualVelocity": joint.ActualVelocity,
+                "ActualAcceleration": joint.ActualAcceleration,
+                "ActualCurrent": joint.ActualCurrent,
+                "Statusof402": joint.Statusof402,
+            }
+        return result
 
 
 class PoseStatus:

@@ -2,7 +2,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="robot_sdk_v2",
+    name="robot_sdk_v2_test",
     version="0.1",
     packages=find_packages(),
     zip_safe=False,

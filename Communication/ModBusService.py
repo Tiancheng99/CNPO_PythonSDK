@@ -19,36 +19,49 @@ from Communication.ModBusUtils import registers_to_float, registers_to_dword
 @dataclass
 class RobotStatus:
     """机器人状态信息类"""
+    joint_count: int = 6
     TimestampUtc: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     Initialized: bool = False
     PowerOn: bool = False
     Moving: bool = False
     Error: bool = False
-    TcpJogInchCoord: bool = False 
+    TcpJogInchCoord: bool = False
     ErrorId: int = 0
-    JointError: List[bool] = field(default_factory=lambda: [False]*6)
-    JointMoving: List[bool] = field(default_factory=lambda: [False]*6)
-    JointErrorId: List[int] = field(default_factory=lambda: [0]*6)
-    JointState: List[int] = field(default_factory=lambda: [0]*6)
-    JointActualPosition: List[float] = field(default_factory=lambda: [0.0]*6)
-    JointActualVelocity: List[float] = field(default_factory=lambda: [0.0]*6)
-    JointActualCurrent: List[float] = field(default_factory=lambda: [0.0]*6)
-    JointActualTorque: List[float] = field(default_factory=lambda: [0.0]*6)
+    ActualMovementMode: int = 0
+    JointError: List[bool] = field(default_factory=list)
+    JointMoving: List[bool] = field(default_factory=list)
+    JointErrorId: List[int] = field(default_factory=list)
+    JointState: List[int] = field(default_factory=list)
+    JointActualPosition: List[float] = field(default_factory=list)
+    JointActualVelocity: List[float] = field(default_factory=list)
+    JointActualCurrent: List[float] = field(default_factory=list)
+    JointActualTorque: List[float] = field(default_factory=list)
     FlangePose: List[float] = field(default_factory=lambda: [0.0]*6)
     TcpPose: List[float] = field(default_factory=lambda: [0.0]*6)
+
+    def __post_init__(self):
+        self.JointError = _fit_list(self.JointError, self.joint_count, False)
+        self.JointMoving = _fit_list(self.JointMoving, self.joint_count, False)
+        self.JointErrorId = _fit_list(self.JointErrorId, self.joint_count, 0)
+        self.JointState = _fit_list(self.JointState, self.joint_count, 0)
+        self.JointActualPosition = _fit_list(self.JointActualPosition, self.joint_count, 0.0)
+        self.JointActualVelocity = _fit_list(self.JointActualVelocity, self.joint_count, 0.0)
+        self.JointActualCurrent = _fit_list(self.JointActualCurrent, self.joint_count, 0.0)
+        self.JointActualTorque = _fit_list(self.JointActualTorque, self.joint_count, 0.0)
 
 @dataclass
 class RobotParameters:
     """机器人参数类 (对应 Holding Registers)"""
-    DHParameters: List[List[float]] = field(default_factory=lambda: [[0.0]*4 for _ in range(6)])
-    CalibrationJointPositions: List[float] = field(default_factory=lambda: [0.0]*6)
+    joint_count: int = 6
+    DHParameters: List[List[float]] = field(default_factory=list)
+    CalibrationJointPositions: List[float] = field(default_factory=list)
     OverrideRatio: float = 1.0
-    JointJogVelocity: List[float] = field(default_factory=lambda: [0.0]*6)
-    InchDistance: List[float] = field(default_factory=lambda: [0.0]*6)
-    JointTargetPosition: List[float] = field(default_factory=lambda: [0.0]*6)
-    JointReferenceVelocity: List[float] = field(default_factory=lambda: [0.0]*6)
-    JointReferenceAcceleration: List[float] = field(default_factory=lambda: [0.0]*6)
-    JointReferenceJerk: List[float] = field(default_factory=lambda: [0.0]*6)
+    JointJogVelocity: List[float] = field(default_factory=list)
+    InchDistance: List[float] = field(default_factory=list)
+    JointTargetPosition: List[float] = field(default_factory=list)
+    JointReferenceVelocity: List[float] = field(default_factory=list)
+    JointReferenceAcceleration: List[float] = field(default_factory=list)
+    JointReferenceJerk: List[float] = field(default_factory=list)
     MoveJReferenceVelocity: float = 0.0
     MoveJReferenceAcceleration: float = 0.0
     MoveJReferenceDeceleration: float = 0.0
@@ -75,12 +88,30 @@ class RobotParameters:
     LevelingDirction: List[float] = field(default_factory=lambda: [0.0]*3)
     Axis: int = 0
 
+    def __post_init__(self):
+        self.DHParameters = self.DHParameters or [[0.0]*4 for _ in range(self.joint_count)]
+        self.CalibrationJointPositions = _fit_list(self.CalibrationJointPositions, self.joint_count, 0.0)
+        self.JointJogVelocity = _fit_list(self.JointJogVelocity, self.joint_count, 0.0)
+        self.InchDistance = _fit_list(self.InchDistance, self.joint_count, 0.0)
+        self.JointTargetPosition = _fit_list(self.JointTargetPosition, self.joint_count, 0.0)
+        self.JointReferenceVelocity = _fit_list(self.JointReferenceVelocity, self.joint_count, 0.0)
+        self.JointReferenceAcceleration = _fit_list(self.JointReferenceAcceleration, self.joint_count, 0.0)
+        self.JointReferenceJerk = _fit_list(self.JointReferenceJerk, self.joint_count, 0.0)
+
+
+def _fit_list(values: List[Any], length: int, default: Any) -> List[Any]:
+    fitted = list(values[:length]) if values else []
+    if len(fitted) < length:
+        fitted.extend([default] * (length - len(fitted)))
+    return fitted
+
 
 class ModBusService:
-    def __init__(self, communicator: ModBusCommunicator, address_book: Dict[str, CompactEntry], poll_interval: float = 0.1):
+    def __init__(self, communicator: ModBusCommunicator, address_book: Dict[str, CompactEntry], poll_interval: float = 0.1, joint_count: int = 6):
         self._com = communicator
         self._book = address_book
-        self._poll_interval = poll_interval 
+        self._poll_interval = poll_interval
+        self.joint_count = max(1, int(joint_count or 6))
 
         self._pulse_locks: Dict[str, asyncio.Lock] = {}
         self._queue: Optional[asyncio.Queue] = None
@@ -189,7 +220,10 @@ class ModBusService:
                 if not future.done(): future.set_result(result)
             except Exception as ex:
                 if not future.done(): future.set_exception(ex)
-                raise ex 
+                # 只有真正的 IO/连接错误才向上抛，触发 _consume_loop 的重连逻辑
+                # 业务逻辑错误（如地址簿缺 key）不应导致 0.5s 全局队列阻塞
+                if "10053" in str(ex) or "Aborted" in str(ex) or isinstance(ex, (ConnectionError, OSError)):
+                    raise ex
 
         await self._queue.put(work_item)
         return await future
@@ -272,20 +306,16 @@ class ModBusService:
 
             # 2. 批量读取数据 (分块处理)
             # Discrete Inputs (Flags)
-            byte_flags = self._com.read_discrete_inputs_block(flags_start, 128)
+            flags_count = self._area_bit_count("InputStatus", flags_start)
+            byte_flags = self._com.read_discrete_inputs_block(flags_start, flags_count)
             
-            # Input Registers (Status) - 由于 158 超过了 125 的 Modbus 限制，分两次读
-            # 块 1: 0-100
-            regs_part1 = self._com.read_input_registers_block(status_start, 100)
-            # 块 2: 100-158
-            regs_part2 = self._com.read_input_registers_block(status_start + 100, 58)
-            
-            all_regs = regs_part1 + regs_part2
+            status_count = self._area_register_count("InputRegisters", status_start)
+            all_regs = self._com.read_input_registers_block(status_start, status_count)
 
             if not byte_flags or not all_regs: return None
 
             # 3. 解析到对象
-            s = RobotStatus()
+            s = RobotStatus(joint_count=self.joint_count)
             
             s.Initialized = self._get_bit(byte_flags, flags_start, get_addr("Flags.Initialized"))
             s.PowerOn     = self._get_bit(byte_flags, flags_start, get_addr("Flags.PowerOn"))
@@ -293,21 +323,24 @@ class ModBusService:
             s.Error       = self._get_bit(byte_flags, flags_start, get_addr("Flags.Error"))
 
             s.ErrorId     = self._get_dword(all_regs, status_start, get_addr("Status.Error_ID"))
+            s.ActualMovementMode = self._get_dword(all_regs, status_start, get_addr("Status.Actual_Movement_Mode"))
 
-            for i in range(6):
+            for i in range(self.joint_count):
                 s.JointError[i]  = self._get_bit(byte_flags, flags_start, get_addr("Flags.Joint_Error", i+1))
                 s.JointMoving[i] = self._get_bit(byte_flags, flags_start, get_addr("Flags.Joint_Moving", i+1))
+                s.JointErrorId[i] = self._get_dword(all_regs, status_start, get_addr("Status.Joint_Error_ID", i+1))
+                s.JointState[i] = self._get_dword(all_regs, status_start, get_addr("Status.Joint_State", i+1))
                 
                 s.JointActualPosition[i] = self._get_f32(all_regs, status_start, get_addr("Status.Joint_Actual_Position", i+1))
                 s.JointActualVelocity[i] = self._get_f32(all_regs, status_start, get_addr("Status.Joint_Actual_Velocity", i+1))
                 s.JointActualCurrent[i]  = self._get_f32(all_regs, status_start, get_addr("Status.Joint_Actual_Current", i+1))
                 s.JointActualTorque[i]   = self._get_f32(all_regs, status_start, get_addr("Status.Joint_Actual_Torque", i+1))
             
-            # 读取法兰位姿
+            # 读取法兰位姿，固定为 XYZRPY 6 维
             for i in range(6):
                 s.FlangePose[i] = self._get_f32(all_regs, status_start, get_addr("Status.Flange_Pose", i+1))
-
-            # 读取 TCP 实际位置
+            
+            # 读取 TCP 实际位置，固定为 XYZRPY 6 维
             for i in range(6):
                 s.TcpPose[i] = self._get_f32(all_regs, status_start, get_addr("Status.TCP_Pose", i+1))
 
@@ -333,27 +366,24 @@ class ModBusService:
 
             p_start = find_holding_registers_start()
             
-            # 读取足够多的寄存器（分块处理以绕过 125 限制）
-            regs_part1 = self._com.read_holding_registers_block(p_start, 125)
-            regs_part2 = self._com.read_holding_registers_block(p_start + 125, 125)
-            regs_part3 = self._com.read_holding_registers_block(p_start + 250, 100)
-            all_regs = regs_part1 + regs_part2 + regs_part3
+            register_count = self._area_register_count("HoldingRegisters", p_start)
+            all_regs = self._com.read_holding_registers_block(p_start, register_count)
             
             if not all_regs: return None
 
             def get_addr(key: str, *idx: int) -> int:
                 return AddressBook.address_of(self._book, key, *idx)[1]
 
-            p = RobotParameters()
+            p = RobotParameters(joint_count=self.joint_count)
             
             # 1. DH 参数 (6x4)
-            for i in range(6):
+            for i in range(self.joint_count):
                 for j in range(4):
                     addr = get_addr("Parameters.DH_Parameters", i+1, j+1)
                     p.DHParameters[i][j] = self._get_f32(all_regs, p_start, addr)
             
             # 2. 校准位置 (6个 REAL)
-            for i in range(6):
+            for i in range(self.joint_count):
                 addr = get_addr("Parameters.CalibrationJointPositions", i+1)
                 p.CalibrationJointPositions[i] = self._get_f32(all_regs, p_start, addr)
             
@@ -361,22 +391,22 @@ class ModBusService:
             p.OverrideRatio = self._get_f32(all_regs, p_start, get_addr("Parameters.Override"))
             
             # 4. 关节 Jog 速度 (6个 REAL)
-            for i in range(6):
+            for i in range(self.joint_count):
                 addr = get_addr("Parameters.Joint_Jog_Velocity", i+1)
                 p.JointJogVelocity[i] = self._get_f32(all_regs, p_start, addr)
             
             # 5. 英寸距离 (6个 REAL)
-            for i in range(6):
+            for i in range(self.joint_count):
                 addr = get_addr("Parameters.Inch_Distance", i+1)
                 p.InchDistance[i] = self._get_f32(all_regs, p_start, addr)
             
             # 6. 关节目标位置 (6个 REAL)
-            for i in range(6):
+            for i in range(self.joint_count):
                 addr = get_addr("Parameters.Joint_Target_Position", i+1)
                 p.JointTargetPosition[i] = self._get_f32(all_regs, p_start, addr)
             
             # 7. 关节参考速度/加速度/Jerk (各6个 REAL)
-            for i in range(6):
+            for i in range(self.joint_count):
                 p.JointReferenceVelocity[i] = self._get_f32(all_regs, p_start, get_addr("Parameters.Joint_Refference_Velocity", i+1))
                 p.JointReferenceAcceleration[i] = self._get_f32(all_regs, p_start, get_addr("Parameters.Joint_Refference_Acceleration", i+1))
                 p.JointReferenceJerk[i] = self._get_f32(all_regs, p_start, get_addr("Parameters.Joint_Refference_Jerk", i+1))
@@ -425,6 +455,28 @@ class ModBusService:
             traceback.print_exc()
             return None
 
+
+    def _area_register_count(self, area: str, start: int) -> int:
+        max_end = start
+        for entry in self._book.values():
+            if entry.area != area or entry.regBase is None:
+                continue
+            words = max(1, entry.bytesPerElem // 2)
+            count = entry.count or 1
+            last = entry.regBase + (max(0, count - 1) * (entry.regStride or words)) + words
+            max_end = max(max_end, last)
+        return max(1, max_end - start)
+
+    def _area_bit_count(self, area: str, start: int) -> int:
+        max_end = start
+        for entry in self._book.values():
+            if entry.area != area or entry.bitBase is None:
+                continue
+            count = entry.count or 1
+            last = entry.bitBase + (max(0, count - 1) * (entry.bitStride or 1)) + 1
+            max_end = max(max_end, last)
+        return max(1, max_end - start)
+
     # --- 辅助解析函数 (对齐偏移量) ---
     @staticmethod
     def _get_bit(packed_bits: bytes, block_start: int, absolute_addr: int) -> bool:
@@ -437,7 +489,7 @@ class ModBusService:
     def _get_dword(self, regs: List[int], block_start: int, absolute_addr: int) -> int:
         offset = absolute_addr - block_start
         if offset < 0 or offset + 1 >= len(regs): return 0
-        return registers_to_dword(regs[offset], regs[offset+1]) 
+        return registers_to_dword(regs[offset], regs[offset+1], swap_words=self._com.swap_words, swap_bytes_in_word=self._com.swap_bytes_in_word)
 
     def _get_f32(self, regs: List[int], block_start: int, absolute_addr: int) -> float:
         offset = absolute_addr - block_start

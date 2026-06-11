@@ -1,0 +1,10 @@
+{
+  "default_arm": "arm1",
+  "arms": {
+    "arm1": {
+      "joint_count": 7,
+      "address_book": "Config/modbus_address_book.compact.json",
+      "parameter_file": "Config/DefaultRobotParameters.json"
+    }
+  }
+}

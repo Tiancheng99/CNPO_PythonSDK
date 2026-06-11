@@ -6,7 +6,6 @@ import asyncio
 import json
 from time import sleep
 from typing import Optional, List, Union
-from threading import Timer
 from pprint import pprint
 
 from PythonWorkFlow.Core.Basic import *
@@ -17,7 +16,22 @@ from Communication.CompactEntry import AddressBook
 from ..Util import *
 
 class RobotCore:
-    def __init__(self, target_ip: str):
+    def __init__(self, target_ip: str, auto_initialize_robot: bool = True,
+                 config_path: str = "Config/RobotConfig.json", arm_name: Optional[str] = None,
+                 address_book_path: Optional[str] = None, parameter_json: Optional[str] = None,
+                 joint_count: Optional[int] = None):
+        self.config_path = config_path
+        self.config_base_dir = self._resolve_config_base_dir(config_path)
+        runtime_config = self._load_runtime_config(config_path)
+        arm_config = self._select_arm_config(runtime_config, arm_name)
+
+        configured_joint_count = joint_count or arm_config.get("joint_count") or runtime_config.get("joint_count")
+        self.joint_count = self._parse_joint_count(configured_joint_count, 6)
+        raw_address_book_path = address_book_path or arm_config.get("address_book") or runtime_config.get("address_book")
+        raw_parameter_json = parameter_json or arm_config.get("parameter_file") or runtime_config.get("parameter_file") or "Config/DefaultRobotParameters.json"
+        self.address_book_path = self._resolve_config_reference(raw_address_book_path)
+        self.default_parameter_json = self._resolve_config_reference(raw_parameter_json)
+
         # 创建底层同步 communicator
         # 注意：swap_words=True 用于处理 Modbus TCP 32位数据的字序问题
         self.communicator = ModBusCommunicator(target_ip, 502, unit_id=1, swap_words=True)
@@ -26,12 +40,14 @@ class RobotCore:
         self._address_book = self._load_address_book()
         if not self._address_book:
             print("警告：未找到地址簿配置文件，部分功能可能无法使用。")
-
-        # 默认参数文件路径
-        self.default_parameter_json = "Config/DefaultRobotParameters.json"
+        else:
+            inferred_joint_count = self._infer_joint_count_from_address_book(self._address_book)
+            if configured_joint_count is None and inferred_joint_count:
+                self.joint_count = inferred_joint_count
+            self._validate_address_book_joint_count(self._address_book)
 
         # 创建 ModBusService（async 管理 I/O 队列）
-        self._service = ModBusService(self.communicator, self._address_book or {})
+        self._service = ModBusService(self.communicator, self._address_book or {}, joint_count=self.joint_count)
 
         # 事件循环与后台线程
         self._loop: Optional[asyncio.AbstractEventLoop] = None
@@ -40,39 +56,146 @@ class RobotCore:
         # 机器人状态与参数
         # 尝试加载默认参数，如果文件不存在则使用默认值
         try:
-            self.robot_parameter = RobotParameters(json_file=self.default_parameter_json)
+            self.robot_parameter = RobotParameters(json_file=self.default_parameter_json, joint_count=self.joint_count)
         except Exception as e:
             print(f"加载默认参数失败: {e}，将使用空参数初始化")
             # 使用 ModBusRobotParameters 的空初始化
             self.robot_parameter = None
 
-        self.robot_status = RobotStatus()
+        self.robot_status = RobotStatus(joint_count=self.joint_count)
         
-        # 定时器用于周期性读取状态
-        self.timer = Timer(0.05, self.ReadRobotStatus)
-        self.timer.daemon = True
-
         # 连接状态标记
         self.connected = False
         self.init_complete = False  # SDK初始化完成标志
+        self.auto_initialize_robot = auto_initialize_robot
 
         # 尝试连接并初始化
         self._initialize_connection()
 
+    def _resolve_config_base_dir(self, config_path: str) -> Optional[str]:
+        if not config_path:
+            return None
+        config_dir = os.path.dirname(os.path.abspath(config_path))
+        if os.path.basename(config_dir).lower() == "config":
+            return os.path.dirname(config_dir)
+        return config_dir
+
+    def _resolve_config_reference(self, path: Optional[str]) -> Optional[str]:
+        if not path or os.path.isabs(path):
+            return path
+
+        candidates = []
+        first_part = path.replace("\\", "/").split("/", 1)[0].lower()
+        if self.config_base_dir:
+            if first_part == "config":
+                candidates.append(os.path.join(self.config_base_dir, path))
+            else:
+                candidates.append(os.path.join(self.config_base_dir, "Config", path))
+                candidates.append(os.path.join(self.config_base_dir, path))
+        candidates.append(path)
+
+        for candidate in candidates:
+            if os.path.exists(candidate):
+                return os.path.abspath(candidate)
+        return os.path.abspath(candidates[0]) if candidates else path
+
+    def _load_runtime_config(self, config_path: str) -> dict:
+        if not config_path or not os.path.exists(config_path):
+            return {}
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+                print(f"[配置提醒] {config_path} 顶层必须是 JSON 对象，已忽略。")
+        except Exception as e:
+            print(f"[配置提醒] 读取运行配置失败（{config_path}）：{e}，将使用兼容默认值。")
+        return {}
+
+    def _select_arm_config(self, runtime_config: dict, arm_name: Optional[str]) -> dict:
+        arms = runtime_config.get("arms", {})
+        if not isinstance(arms, dict) or not arms:
+            return {}
+        selected = arm_name or runtime_config.get("default_arm")
+        if not selected:
+            selected = next(iter(arms.keys()))
+            print(f"[配置提醒] 未配置 default_arm，已使用第一条机械臂配置：{selected}")
+        arm_config = arms.get(selected)
+        if not isinstance(arm_config, dict):
+            print(f"[配置提醒] 未找到机械臂配置 arms.{selected}，将使用兼容默认值。")
+            return {}
+        return arm_config
+
+    def _parse_joint_count(self, value, default: int) -> int:
+        try:
+            count = int(value) if value is not None else default
+        except (TypeError, ValueError):
+            print(f"[配置提醒] joint_count={value!r} 无效，已回退为 {default}")
+            count = default
+        if count <= 0:
+            print(f"[配置提醒] joint_count={count} 无效，已回退为 {default}")
+            count = default
+        return count
+
     def _load_address_book(self) -> Optional[dict]:
         """加载地址簿的工具方法"""
-        try_paths = [
+        try_paths = []
+        if self.address_book_path:
+            try_paths.append(self.address_book_path)
+        try_paths.extend([
             'Config/modbus_address_book.compact_win.json',
             'Config/modbus_address_book.compact.json' # 兼容 C# 路径习惯
-        ]
+        ])
+        seen = set()
         for path in try_paths:
+            if path in seen:
+                continue
+            seen.add(path)
             if os.path.exists(path):
                 try:
+                    print(f"使用地址簿配置：{path}")
                     return AddressBook.load(path)
                 except Exception as e:
                     print(f"加载地址簿失败（路径：{path}）：{e}")
+            else:
+                print(f"[配置提醒] 地址簿文件不存在：{path}")
         print("未找到地址簿文件")
         return None
+
+    def _infer_joint_count_from_address_book(self, address_book: dict) -> Optional[int]:
+        for key in ("Parameters.Joint_Target_Position", "Status.Joint_Actual_Position", "Flags.Joint_Error"):
+            entry = address_book.get(key)
+            if entry and entry.dims:
+                return int(entry.dims[0])
+        return None
+
+    def _validate_address_book_joint_count(self, address_book: dict) -> None:
+        joint_keys = [
+            "Parameters.DH_Parameters",
+            "Parameters.CalibrationJointPositions",
+            "Parameters.Joint_Jog_Velocity",
+            "Parameters.Inch_Distance",
+            "Parameters.Joint_Target_Position",
+            "Parameters.Joint_Refference_Velocity",
+            "Parameters.Joint_Refference_Acceleration",
+            "Parameters.Joint_Refference_Jerk",
+            "Status.Joint_Actual_Position",
+            "Status.Joint_Actual_Velocity",
+            "Status.Joint_Actual_Current",
+            "Status.Joint_Actual_Torque",
+            "Flags.Joint_Error",
+            "Flags.Joint_Moving",
+        ]
+        for key in joint_keys:
+            entry = address_book.get(key)
+            if not entry:
+                print(f"[配置提醒] 地址表缺少 {key}，相关功能可能不可用，请检查人工配置。")
+                continue
+            if entry.dims and int(entry.dims[0]) < self.joint_count:
+                print(
+                    f"[配置提醒] 地址表 {key} 第一维为 {entry.dims[0]}，"
+                    f"小于配置 joint_count={self.joint_count}，请提供对应机械臂的地址表。"
+                )
 
     def _run_async(self, coro, timeout: float = 5.0):
         """在后台事件循环中运行协程并等待结果（跨线程安全）"""
@@ -93,8 +216,13 @@ class RobotCore:
         if self.connected:
             print("连接成功！启动 ModBusService...")
             self._start_service_loop()
-            self.timer.start()
-            self._initialize_robot()
+            # 用 _poll_loop 的回调驱动状态更新，替代独立定时器
+            self._service.snapshot_updated = lambda s: setattr(self, 'robot_status', s)
+            if self.auto_initialize_robot:
+                self._initialize_robot()
+            else:
+                self.init_complete = True
+                print("跳过 SDK 机器人逻辑初始化：由上层管理使能、模式与参数")
         else:
             print("连接失败！")
 
@@ -139,11 +267,16 @@ class RobotCore:
                 await self.SetControlMode(ControlMode.Calibration) # 或 Idel
                 
                 # 4. 下发默认参数 (如果需要覆盖设备参数)
-                await self.RobotSetParameters(self.robot_parameter)
+                if self.robot_parameter is not None:
+                    await self.RobotSetParameters(self.robot_parameter)
+
+                # 写完参数后主动刷新一次状态，确保 PowerOn 等标志位是最新值
+                new_status = await self._service.read_snapshot()
+                if new_status:
+                    self.robot_status = new_status
 
                 # 标记SDK初始化完成
                 self.init_complete = True
-                
                 print("机器人逻辑初始化完成！")
             except Exception as e:
                 print(f"初始化机器人逻辑失败：{e}")
@@ -175,6 +308,31 @@ class RobotCore:
             print(f"发送使能指令失败：{e}")
             raise
     
+
+
+    async def RobotSetCalibrationJointPositions(self, joint_positions: List[float]) -> None:
+        """写入关节零位标定位置，单位 rad。"""
+        if not self.connected: return
+        if len(joint_positions) != self.joint_count:
+            raise ValueError(f"CalibrationJointPositions 需要 {self.joint_count} 个关节值，实际收到 {len(joint_positions)} 个")
+        try:
+            for i, value in enumerate(joint_positions, 1):
+                await self._service.write_real('Parameters.CalibrationJointPositions', float(value), i)
+            print("关节零位标定位置写入成功")
+        except Exception as e:
+            print(f"写入关节零位标定位置失败：{e}")
+            raise
+
+    async def RobotCalibrateJointPosition(self) -> None:
+        """触发关节零位标定 (Pulse)。"""
+        if not self.connected: return
+        try:
+            await self._service.pulse_bool('Instructions.Calibrate_Joint_Position', 50)
+            print("关节零位标定指令发送成功")
+        except Exception as e:
+            print(f"发送关节零位标定指令失败：{e}")
+            raise
+
     async def RobotDisable(self) -> None:
         """失能机器人 (Pulse)"""
         if not self.connected: return
@@ -229,6 +387,26 @@ class RobotCore:
             print(f"发送使能指令失败：{e}")
             raise
     
+
+
+    def RobotSetCalibrationJointPositions_sync(self, joint_positions: List[float]) -> None:
+        """写入关节零位标定位置，单位 rad（同步方法）。"""
+        if not self.connected: return
+        try:
+            self._run_async(self.RobotSetCalibrationJointPositions(joint_positions))
+        except Exception as e:
+            print(f"写入关节零位标定位置失败：{e}")
+            raise
+
+    def RobotCalibrateJointPosition_sync(self) -> None:
+        """触发关节零位标定 (同步方法)。"""
+        if not self.connected: return
+        try:
+            self._run_async(self.RobotCalibrateJointPosition())
+        except Exception as e:
+            print(f"发送关节零位标定指令失败：{e}")
+            raise
+
     def RobotDisable_sync(self) -> None:
         """失能机器人 (同步方法)"""
         if not self.connected: return
@@ -289,7 +467,7 @@ class RobotCore:
             
             # 1. DH 参数
             key_dh = "Parameters.DH_Parameters"
-            for i in range(6):
+            for i in range(self.joint_count):
                 for j in range(4):
                     val = parameters.DH_Parameters[i][j]
                     # i+1, j+1 为 1-based index
@@ -303,7 +481,6 @@ class RobotCore:
             await s.write_real("Parameters.Override", float(parameters.Override))
 
             # 4. 关节运动参数 (Jog/Inch/Ref)
-            # 假设所有数组长度均为6
             keys_map = [
                 ("Parameters.Joint_Jog_Velocity", parameters.JointJogVelocity),
                 ("Parameters.Inch_Distance", parameters.InchDistance),
@@ -362,25 +539,6 @@ class RobotCore:
     # 状态读取
     # ------------------------------
 
-    def ReadRobotStatus(self) -> None:
-        """周期性读取机器人状态（定时器回调）"""
-        if self.connected and self._loop:
-            async def async_read_status():
-                try:
-                    # 使用 Service 的 snapshot 机制
-                    new_status = await self._service.read_snapshot()
-                    if new_status:
-                        self.robot_status = new_status
-                except Exception as e:
-                    pass
-
-            asyncio.run_coroutine_threadsafe(async_read_status(), self._loop)
-        
-        # 维持定时器
-        self.timer = Timer(0.05, self.ReadRobotStatus)
-        self.timer.daemon = True
-        self.timer.start()
-
     async def getRobotStatus(self) -> str:
         """获取当前机器人状态并转换为JSON"""
         if not self.connected:
@@ -398,7 +556,7 @@ class RobotCore:
             
             # --- 构建 Joints 部分 ---
             joints_data = {}
-            for i in range(6):
+            for i in range(self.joint_count):
                 joint_name = f"J{i+1}"
                 # 安全获取列表数据，防止索引越界
                 def get_val(arr, idx):
@@ -470,31 +628,41 @@ class RobotCore:
     # 运动指令 (MoveJ, MoveL, Jog, Inch)
     # ------------------------------
 
+    def _validate_joint_index(self, index: int) -> None:
+        if index < 1 or index > self.joint_count:
+            raise ValueError(f"关节索引 {index} 超出范围，应为 1..{self.joint_count}")
+
     async def JogForward(self, index: int, value: bool) -> None:
         """关节正向连续点动"""
         if not self.connected: return
+        self._validate_joint_index(index)
         # C# 逻辑：WriteBool "Instructions.Joint_Jog_Forward"
         await self._service.write_bool('Instructions.Joint_Jog_Forward', value, index)
 
     async def JogBackward(self, index: int, value: bool) -> None:
         if not self.connected: return
+        self._validate_joint_index(index)
         await self._service.write_bool('Instructions.Joint_Jog_Backward', value, index)
 
     async def InchForward(self, index: int, value: bool) -> None:
         """关节正向增量点动"""
         if not self.connected: return
+        self._validate_joint_index(index)
         await self._service.write_bool('Instructions.Joint_Inch_Forward', value, index)
 
     async def InchBackward(self, index: int, value: bool) -> None:
         if not self.connected: return
+        self._validate_joint_index(index)
         await self._service.write_bool('Instructions.Joint_Inch_Backward', value, index)
 
     def MoveJ(self, joint_positions: List[float]) -> None:
         """关节空间运动"""
         if not self.connected: return
+        if len(joint_positions) != self.joint_count:
+            raise ValueError(f"MoveJ 需要 {self.joint_count} 个关节目标，实际收到 {len(joint_positions)} 个")
         
         async def _move_j_async():
-            # 1. 写目标 - 使用地址簿API（1-based索引1-6）
+            # 1. 写目标 - 使用地址簿API（1-based索引）
             # 底层的ModBusCommunicator会自动处理硬件地址偏移
             for i, val in enumerate(joint_positions):
                 await self._service.write_real('Parameters.Joint_Target_Position', float(val), i+1)
@@ -517,6 +685,7 @@ class RobotCore:
     def MoveAbs(self, joint_index: int, target_position: float) -> None:
         """单关节绝对运动"""
         if not self.connected: return
+        self._validate_joint_index(joint_index)
         
         async def _move_abs_async():
             await self._service.write_real('Parameters.Joint_Target_Position', float(target_position), joint_index)
@@ -528,30 +697,6 @@ class RobotCore:
     # 辅助功能
     # ------------------------------
     
-    def stop(self) -> None:
-        """停止服务"""
-        if not self.connected: return
-        try:
-            if self.timer: self.timer.cancel()
-            
-            if self._service and self._loop:
-                # 尝试发送失能
-                asyncio.run_coroutine_threadsafe(self.RobotDisable(), self._loop)
-                # 停止服务
-                asyncio.run_coroutine_threadsafe(self._service.stop(), self._loop)
-            
-            # 停止循环
-            if self._loop:
-                self._loop.call_soon_threadsafe(self._loop.stop)
-            
-            if self._loop_thread:
-                self._loop_thread.join(timeout=1.0)
-            
-            self.connected = False
-            print("服务已停止")
-        except Exception as e:
-            print(f"停止服务出错: {e}")
-
     # ------------------------------
     # 末端负载参数 (End-Effector & Load Parameters)
     # ------------------------------
@@ -747,19 +892,14 @@ class RobotCore:
         """激活关节点动模式"""
         await self.SetControlMode(ControlMode.JointJog)
 
-    def stop(self) -> None:
-        """停止机器人服务、事件循环及相关资源"""
+    def stop(self, disable_robot: bool = True) -> None:
+        """停止机器人服务、事件循环及相关资源。"""
         if not self.connected:
             print("机器人未连接，无需停止服务")
             return
         try:
-            # 1. 取消状态读取定时器
-            if self.timer:
-                self.timer.cancel()
-                print("已取消状态读取定时器")
-
             # === 关键新增步骤：发送安全失能指令 ===
-            if self._service and self._loop:
+            if disable_robot and self._service and self._loop:
                 print("正在发送机器人失能指令...")
                 try:
                     # 将异步的 RobotDisable 提交给后台事件循环执行
@@ -833,7 +973,7 @@ class RobotCore:
     
     def activateMoveLinear_sync(self) -> None:
         """切换到 MoveLinear 模式（同步版本）"""
-        self._run_async(self.activateMoveLinear())    
+        self._run_async(self.activateMoveLinear())
     
     # ------------------------------
     # 状态获取方法
@@ -850,13 +990,13 @@ class RobotCore:
         """
         joint_rad = self.robot_status.JointActualPosition
         if not joint_rad:
-            return [0.0] * 6
+            return [0.0] * self.joint_count
         
         if in_degrees:
             import math
             return [math.degrees(r) for r in joint_rad]
         return list(joint_rad)
-
+    
     def GetFlangePose(self) -> List[float]:
         """
         获取当前法兰位姿
