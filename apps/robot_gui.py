@@ -148,7 +148,7 @@ def fit(values: List[float], count: int, default: float = 0.0) -> List[float]:
     return values
 
 
-def format_numbers(values: List[float], digits: int = 3) -> str:
+def format_numbers(values: List[float], digits: int = 4) -> str:
     return ", ".join(f"{v:.{digits}f}" for v in values)
 
 
@@ -287,7 +287,7 @@ class RobotWorker:
         def task() -> None:
             robot = self._require_robot()
             target = fit(joint_positions_rad, robot.joint_count)
-            self._log(f"写入标定零位(rad): [{format_numbers(target, 6)}]")
+            self._log(f"写入标定零位(rad): [{format_numbers(target)}]")
             robot.SetControlMode_sync(ControlMode.Calibration)
             time.sleep(0.3)
             robot.RobotSetCalibrationJointPositions_sync(target)
@@ -303,7 +303,7 @@ class RobotWorker:
             self._require_power_on(robot)
             joints_rad_fit = fit(joints_rad, robot.joint_count)
             self.stop_requested.clear()
-            self._log(f"MoveJ 目标(rad): [{format_numbers(joints_rad_fit, 6)}]")
+            self._log(f"MoveJ 目标(rad): [{format_numbers(joints_rad_fit)}]")
             robot.SetControlMode_sync(ControlMode.MoveJoint)
             robot.MoveJ(joints_rad_fit)
             self._wait_until_done(timeout=60.0)
@@ -434,8 +434,8 @@ class RobotApp(tk.Tk):
     def __init__(self, startup: StartupSelection) -> None:
         super().__init__()
         self.title("Robot SDK V2 上位机")
-        self.geometry("1120x760")
-        self.minsize(980, 680)
+        self.geometry("1280x820")
+        self.minsize(1120, 760)
         self.startup = startup
 
         self.events: "queue.Queue[tuple[str, object]]" = queue.Queue()
@@ -443,9 +443,33 @@ class RobotApp(tk.Tk):
         self.csv_points: List[CsvPoint] = []
         self.csv_next_index = 0
         self.csv_running = False
+        self.recorded_points: List[CsvPoint] = []
+        self.record_next_id = 1
         self.joint_vars: List[tk.StringVar] = []
         self.manual_unit_var = tk.StringVar(value="deg")
         self.calibration_deg_var = tk.StringVar(value="")
+        self.record_info_var = tk.StringVar(value="")
+        self.status_lights = {}
+        self.palette = {
+            "app": "#eef3f6",
+            "panel": "#f8fafc",
+            "control": "#eaf3ff",
+            "status": "#eef8f1",
+            "current": "#f7fafc",
+            "manual": "#fff7e6",
+            "calibration": "#f7f0ff",
+            "records": "#eaf8f2",
+            "csv": "#eef2ff",
+            "log": "#f7f7f8",
+            "border": "#b9c3cc",
+            "text": "#18232f",
+            "muted": "#52616f",
+            "green": "#2f9e44",
+            "gray": "#aeb6bf",
+            "amber": "#f08c00",
+            "red": "#d9480f",
+            "blue": "#1c7ed6",
+        }
         self.status_vars = {
             "connected": tk.StringVar(value="未连接"),
             "power": tk.StringVar(value="-"),
@@ -454,6 +478,7 @@ class RobotApp(tk.Tk):
             "error": tk.StringVar(value="-"),
         }
 
+        self._configure_style()
         self._build_ui()
         self._rebuild_joint_inputs(startup.joint_count)
         self.after(100, self._process_events)
@@ -461,83 +486,180 @@ class RobotApp(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.bind_all("<Return>", self._enter_execute)
 
+    def _configure_style(self) -> None:
+        style = ttk.Style(self)
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+        self.configure(bg=self.palette["app"])
+        style.configure(".", background=self.palette["app"], foreground=self.palette["text"])
+        style.configure("App.TFrame", background=self.palette["app"])
+        style.configure("Panel.TFrame", background=self.palette["panel"])
+        style.configure("TLabelframe", padding=8)
+        style.configure("TLabelframe.Label", font=("TkDefaultFont", 10, "bold"))
+        style.configure("TButton", padding=(8, 4))
+        style.configure("TEntry", fieldbackground="#ffffff")
+        style.configure("Treeview", rowheight=24)
+        style.configure("Treeview.Heading", font=("TkDefaultFont", 10, "bold"))
+        for name, bg, accent in [
+            ("Control", self.palette["control"], self.palette["blue"]),
+            ("Status", self.palette["status"], self.palette["green"]),
+            ("Current", self.palette["current"], self.palette["muted"]),
+            ("Manual", self.palette["manual"], self.palette["amber"]),
+            ("Calibration", self.palette["calibration"], "#7048e8"),
+            ("Records", self.palette["records"], "#087f5b"),
+            ("Csv", self.palette["csv"], "#4263eb"),
+            ("Log", self.palette["log"], self.palette["muted"]),
+        ]:
+            style.configure(f"{name}.TLabelframe", background=bg, bordercolor=self.palette["border"], relief="solid")
+            style.configure(f"{name}.TLabelframe.Label", background=bg, foreground=accent, font=("TkDefaultFont", 10, "bold"))
+            style.configure(f"{name}.TFrame", background=bg)
+            style.configure(f"{name}.TLabel", background=bg, foreground=self.palette["text"])
+            style.configure(f"{name}.TCheckbutton", background=bg)
+            style.configure(f"{name}.TRadiobutton", background=bg)
+
+    def _add_status_indicator(self, parent: ttk.Frame, column: int, label: str, key: str) -> None:
+        box = ttk.Frame(parent, style="Status.TFrame")
+        box.grid(row=0, column=column, sticky="ew", padx=(0, 18))
+        ttk.Label(box, text=label, style="Status.TLabel").grid(row=0, column=0, columnspan=2, sticky="w")
+        canvas = tk.Canvas(
+            box,
+            width=18,
+            height=18,
+            bg=self.palette["status"],
+            highlightthickness=0,
+            bd=0,
+        )
+        canvas.grid(row=1, column=0, sticky="w", pady=(4, 0))
+        light = canvas.create_oval(3, 3, 15, 15, fill=self.palette["gray"], outline="")
+        ttk.Label(box, textvariable=self.status_vars[key], width=14, style="Status.TLabel").grid(
+            row=1,
+            column=1,
+            sticky="w",
+            padx=(6, 0),
+            pady=(4, 0),
+        )
+        self.status_lights[key] = (canvas, light)
+
+    def _set_status_light(self, key: str, color: str) -> None:
+        item = self.status_lights.get(key)
+        if not item:
+            return
+        canvas, light = item
+        canvas.itemconfigure(light, fill=color)
+
     def _build_ui(self) -> None:
-        root = ttk.Frame(self, padding=12)
+        root = ttk.Frame(self, padding=12, style="App.TFrame")
         root.pack(fill=tk.BOTH, expand=True)
+        root.columnconfigure(0, weight=1)
+        root.rowconfigure(2, weight=1)
+        root.rowconfigure(3, weight=0)
 
-        top = ttk.Frame(root)
-        top.pack(fill=tk.X)
-        ttk.Label(top, text="IP").pack(side=tk.LEFT)
+        top = ttk.LabelFrame(root, text="连接与控制", padding=(10, 8), style="Control.TLabelframe")
+        top.grid(row=0, column=0, sticky="ew")
+        for col in (1, 5, 6, 7, 8, 9, 10):
+            top.columnconfigure(col, weight=0)
+        top.columnconfigure(11, weight=1)
+        ttk.Label(top, text="IP", style="Control.TLabel").grid(row=0, column=0, sticky="w")
         self.ip_var = tk.StringVar(value=self.startup.ip)
-        ttk.Entry(top, textvariable=self.ip_var, width=18).pack(side=tk.LEFT, padx=(6, 12))
-        ttk.Label(top, text=f"轴数: {self.startup.joint_count}").pack(side=tk.LEFT, padx=(0, 12))
+        ttk.Entry(top, textvariable=self.ip_var, width=18).grid(row=0, column=1, sticky="w", padx=(6, 16))
+        ttk.Label(top, text=f"轴数: {self.startup.joint_count}", style="Control.TLabel").grid(row=0, column=2, sticky="w", padx=(0, 16))
         self.auto_init_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(top, text="连接时自动初始化", variable=self.auto_init_var).pack(side=tk.LEFT)
-        ttk.Button(top, text="连接", command=self._connect).pack(side=tk.LEFT, padx=(12, 4))
-        ttk.Button(top, text="断开", command=self._disconnect).pack(side=tk.LEFT, padx=4)
-        ttk.Button(top, text="使能 + MoveJoint", command=self.worker.enable_and_movejoint).pack(side=tk.LEFT, padx=4)
-        ttk.Button(top, text="去使能", command=self.worker.disable_robot).pack(side=tk.LEFT, padx=4)
-        ttk.Button(top, text="复位", command=self.worker.reset_robot).pack(side=tk.LEFT, padx=4)
-        ttk.Button(top, text="停止", command=self.worker.stop_motion).pack(side=tk.LEFT, padx=4)
+        ttk.Checkbutton(top, text="连接时自动初始化", variable=self.auto_init_var, style="Control.TCheckbutton").grid(row=0, column=3, sticky="w", padx=(0, 16))
+        ttk.Button(top, text="连接", command=self._connect, width=10).grid(row=0, column=4, padx=3)
+        ttk.Button(top, text="断开", command=self._disconnect, width=10).grid(row=0, column=5, padx=3)
+        ttk.Button(top, text="使能 + MoveJoint", command=self.worker.enable_and_movejoint, width=16).grid(row=0, column=6, padx=3)
+        ttk.Button(top, text="去使能", command=self.worker.disable_robot, width=10).grid(row=0, column=7, padx=3)
+        ttk.Button(top, text="复位", command=self.worker.reset_robot, width=10).grid(row=0, column=8, padx=3)
+        ttk.Button(top, text="停止", command=self.worker.stop_motion, width=10).grid(row=0, column=9, padx=3)
 
-        status = ttk.LabelFrame(root, text="状态", padding=10)
-        status.pack(fill=tk.X, pady=(12, 8))
-        for label, key in [
+        status = ttk.LabelFrame(root, text="状态", padding=10, style="Status.TLabelframe")
+        status.grid(row=1, column=0, sticky="ew", pady=(10, 10))
+        for col in range(5):
+            status.columnconfigure(col, weight=1)
+        for col, (label, key) in enumerate([
             ("连接", "connected"),
             ("PowerOn", "power"),
             ("Moving", "moving"),
             ("Mode", "mode"),
             ("Error", "error"),
-        ]:
-            ttk.Label(status, text=label).pack(side=tk.LEFT)
-            ttk.Label(status, textvariable=self.status_vars[key], width=16).pack(side=tk.LEFT, padx=(4, 18))
+        ]):
+            self._add_status_indicator(status, col, label, key)
 
         paned = ttk.PanedWindow(root, orient=tk.HORIZONTAL)
-        paned.pack(fill=tk.BOTH, expand=True)
+        paned.grid(row=2, column=0, sticky="nsew")
 
-        left = ttk.Frame(paned, padding=(0, 0, 8, 0))
-        right = ttk.Frame(paned, padding=(8, 0, 0, 0))
+        left = ttk.Frame(paned, padding=(0, 0, 8, 0), style="App.TFrame")
+        right = ttk.Frame(paned, padding=(8, 0, 0, 0), style="App.TFrame")
+        left.columnconfigure(0, weight=1)
+        left.rowconfigure(3, weight=1)
+        right.columnconfigure(0, weight=1)
+        right.rowconfigure(0, weight=1)
         paned.add(left, weight=1)
         paned.add(right, weight=1)
 
-        current = ttk.LabelFrame(left, text="当前关节状态", padding=10)
-        current.pack(fill=tk.X)
-        self.joint_status_text = tk.Text(current, height=10, wrap=tk.NONE)
-        self.joint_status_text.pack(fill=tk.X)
+        current = ttk.LabelFrame(left, text="当前关节状态", padding=10, style="Current.TLabelframe")
+        current.grid(row=0, column=0, sticky="ew")
+        current.columnconfigure(0, weight=1)
+        self.joint_status_text = tk.Text(current, height=6, wrap=tk.NONE)
+        self.joint_status_text.grid(row=0, column=0, sticky="ew")
         self.joint_status_text.configure(state=tk.DISABLED)
 
-        manual = ttk.LabelFrame(left, text="点对点 MoveJ", padding=10)
-        manual.pack(fill=tk.X, pady=(10, 0))
-        self.joint_input_frame = ttk.Frame(manual)
-        self.joint_input_frame.pack(fill=tk.X)
-        manual_buttons = ttk.Frame(manual)
-        manual_buttons.pack(fill=tk.X, pady=(8, 0))
-        ttk.Radiobutton(manual_buttons, text="角度", variable=self.manual_unit_var, value="deg", command=self._fill_current_joints).pack(side=tk.LEFT)
-        ttk.Radiobutton(manual_buttons, text="弧度", variable=self.manual_unit_var, value="rad", command=self._fill_current_joints).pack(side=tk.LEFT, padx=(4, 12))
-        ttk.Button(manual_buttons, text="填入当前关节", command=self._fill_current_joints).pack(side=tk.LEFT)
-        ttk.Button(manual_buttons, text="执行 MoveJ", command=self._manual_movej).pack(side=tk.LEFT, padx=8)
+        manual = ttk.LabelFrame(left, text="点对点 MoveJ", padding=10, style="Manual.TLabelframe")
+        manual.grid(row=1, column=0, sticky="ew", pady=(10, 0))
+        manual.columnconfigure(0, weight=1)
+        self.joint_input_frame = ttk.Frame(manual, style="Manual.TFrame")
+        self.joint_input_frame.grid(row=0, column=0, sticky="ew")
+        manual_buttons = ttk.Frame(manual, style="Manual.TFrame")
+        manual_buttons.grid(row=1, column=0, sticky="ew", pady=(8, 0))
+        ttk.Radiobutton(manual_buttons, text="角度", variable=self.manual_unit_var, value="deg", command=self._fill_current_joints, style="Manual.TRadiobutton").pack(side=tk.LEFT)
+        ttk.Radiobutton(manual_buttons, text="弧度", variable=self.manual_unit_var, value="rad", command=self._fill_current_joints, style="Manual.TRadiobutton").pack(side=tk.LEFT, padx=(4, 14))
+        ttk.Button(manual_buttons, text="填入当前关节", command=self._fill_current_joints, width=14).pack(side=tk.LEFT)
+        ttk.Button(manual_buttons, text="执行 MoveJ", command=self._manual_movej, width=12).pack(side=tk.LEFT, padx=(8, 0))
 
-        ttk.Button(manual_buttons, text="标定零位", command=self._calibrate_joint_zero).pack(side=tk.LEFT, padx=4)
+        calibration = ttk.LabelFrame(left, text="标定零位", padding=10, style="Calibration.TLabelframe")
+        calibration.grid(row=2, column=0, sticky="ew", pady=(10, 0))
+        calibration.columnconfigure(1, weight=1)
+        ttk.Label(calibration, text="关节角度(deg)", style="Calibration.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 8))
+        ttk.Entry(calibration, textvariable=self.calibration_deg_var).grid(row=0, column=1, sticky="ew", padx=(0, 8))
+        ttk.Button(calibration, text="填入当前角度", command=self._fill_calibration_from_current, width=14).grid(row=0, column=2, padx=(0, 6))
+        ttk.Button(calibration, text="标定零位", command=self._calibrate_joint_zero, width=12).grid(row=0, column=3)
 
-        calibration_box = ttk.Frame(manual)
-        calibration_box.pack(fill=tk.X, pady=(8, 0))
-        ttk.Label(calibration_box, text="标定角度").pack(side=tk.LEFT)
-        ttk.Entry(calibration_box, textvariable=self.calibration_deg_var, width=48).pack(side=tk.LEFT, padx=(6, 4), fill=tk.X, expand=True)
-        ttk.Button(calibration_box, text="填入当前角度", command=self._fill_calibration_from_current).pack(side=tk.LEFT)
+        records = ttk.LabelFrame(left, text="记录关节角", padding=10, style="Records.TLabelframe")
+        records.grid(row=3, column=0, sticky="nsew", pady=(10, 0))
+        records.columnconfigure(0, weight=1)
+        records.rowconfigure(1, weight=1)
+        record_controls = ttk.Frame(records, style="Records.TFrame")
+        record_controls.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        ttk.Label(record_controls, text="Info", style="Records.TLabel").pack(side=tk.LEFT)
+        ttk.Entry(record_controls, textvariable=self.record_info_var, width=24).pack(side=tk.LEFT, padx=(6, 8))
+        ttk.Button(record_controls, text="记录当前关节角", command=self._record_current_joints, width=16).pack(side=tk.LEFT)
+        ttk.Button(record_controls, text="导出 CSV", command=self._export_recorded_points, width=10).pack(side=tk.LEFT, padx=(8, 0))
+        self.record_tree = ttk.Treeview(records, show="headings", height=8)
+        self.record_tree.grid(row=1, column=0, sticky="nsew")
+        self.record_tree.bind("<Double-1>", self._load_recorded_point)
+        record_scroll = ttk.Scrollbar(records, orient=tk.VERTICAL, command=self.record_tree.yview)
+        record_scroll.grid(row=1, column=1, sticky="ns")
+        record_xscroll = ttk.Scrollbar(records, orient=tk.HORIZONTAL, command=self.record_tree.xview)
+        record_xscroll.grid(row=2, column=0, sticky="ew")
+        self.record_tree.configure(yscrollcommand=record_scroll.set, xscrollcommand=record_xscroll.set)
 
-        csv_box = ttk.LabelFrame(right, text="CSV 点位队列", padding=10)
-        csv_box.pack(fill=tk.BOTH, expand=True)
+        csv_box = ttk.LabelFrame(right, text="CSV 点位队列", padding=10, style="Csv.TLabelframe")
+        csv_box.grid(row=0, column=0, sticky="nsew")
+        csv_box.columnconfigure(0, weight=1)
+        csv_box.rowconfigure(1, weight=1)
 
-        csv_controls = ttk.Frame(csv_box)
-        csv_controls.pack(fill=tk.X)
-        ttk.Button(csv_controls, text="下一点(Enter)", command=self._execute_next_csv_point).pack(side=tk.LEFT)
-        ttk.Button(csv_controls, text="加载 CSV", command=self._load_csv).pack(side=tk.LEFT)
-        ttk.Label(csv_controls, text="停留(s)").pack(side=tk.LEFT, padx=(14, 4))
+        csv_controls = ttk.Frame(csv_box, style="Csv.TFrame")
+        csv_controls.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        ttk.Button(csv_controls, text="下一点(Enter)", command=self._execute_next_csv_point, width=14).pack(side=tk.LEFT)
+        ttk.Button(csv_controls, text="加载 CSV", command=self._load_csv, width=10).pack(side=tk.LEFT, padx=(8, 0))
+        ttk.Label(csv_controls, text="停留(s)", style="Csv.TLabel").pack(side=tk.LEFT, padx=(14, 4))
         self.dwell_var = tk.StringVar(value="0.2")
         ttk.Entry(csv_controls, textvariable=self.dwell_var, width=8).pack(side=tk.LEFT)
         self.wait_done_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(csv_controls, text="等待到位", variable=self.wait_done_var).pack(side=tk.LEFT, padx=12)
-        ttk.Button(csv_controls, text="按顺序执行", command=self._execute_csv).pack(side=tk.LEFT, padx=4)
+        ttk.Checkbutton(csv_controls, text="等待到位", variable=self.wait_done_var, style="Csv.TCheckbutton").pack(side=tk.LEFT, padx=12)
+        ttk.Button(csv_controls, text="按顺序执行", command=self._execute_csv, width=12).pack(side=tk.LEFT)
 
         columns = ("id", "joints", "info")
         self.csv_tree = ttk.Treeview(csv_box, columns=columns, show="headings", height=14)
@@ -547,24 +669,32 @@ class RobotApp(tk.Tk):
         self.csv_tree.column("id", width=70, anchor=tk.CENTER)
         self.csv_tree.column("joints", width=360)
         self.csv_tree.column("info", width=120)
-        self.csv_tree.pack(fill=tk.BOTH, expand=True, pady=(8, 0))
+        self.csv_tree.grid(row=1, column=0, sticky="nsew")
+        self.csv_tree.bind("<Double-1>", self._load_csv_point_to_target)
+        csv_scroll = ttk.Scrollbar(csv_box, orient=tk.VERTICAL, command=self.csv_tree.yview)
+        csv_scroll.grid(row=1, column=1, sticky="ns")
+        self.csv_tree.configure(yscrollcommand=csv_scroll.set)
 
-        log_box = ttk.LabelFrame(root, text="日志", padding=10)
-        log_box.pack(fill=tk.BOTH, expand=False, pady=(10, 0))
-        self.log_text = tk.Text(log_box, height=9, wrap=tk.WORD)
-        self.log_text.pack(fill=tk.BOTH, expand=True)
+        log_box = ttk.LabelFrame(root, text="日志", padding=10, style="Log.TLabelframe")
+        log_box.grid(row=3, column=0, sticky="ew", pady=(10, 0))
+        log_box.columnconfigure(0, weight=1)
+        self.log_text = tk.Text(log_box, height=6, wrap=tk.WORD)
+        self.log_text.grid(row=0, column=0, sticky="ew")
 
     def _rebuild_joint_inputs(self, count: int) -> None:
         for child in self.joint_input_frame.winfo_children():
             child.destroy()
         self.joint_vars = []
+        for column in range(4):
+            self.joint_input_frame.columnconfigure(column, weight=1)
         for index in range(count):
-            box = ttk.Frame(self.joint_input_frame)
+            box = ttk.Frame(self.joint_input_frame, style="Manual.TFrame")
             box.grid(row=index // 4, column=index % 4, sticky="ew", padx=4, pady=4)
-            ttk.Label(box, text=f"J{index + 1}").pack(side=tk.LEFT)
-            var = tk.StringVar(value="0.000")
-            ttk.Entry(box, textvariable=var, width=12).pack(side=tk.LEFT, padx=(4, 0))
+            ttk.Label(box, text=f"J{index + 1}", style="Manual.TLabel").pack(side=tk.LEFT)
+            var = tk.StringVar(value="0.0000")
+            ttk.Entry(box, textvariable=var, width=12).pack(side=tk.LEFT, padx=(4, 0), fill=tk.X, expand=True)
             self.joint_vars.append(var)
+        self._configure_record_tree(count)
 
     def _connect(self) -> None:
         self.worker.connect(self.ip_var.get().strip(), self.auto_init_var.get())
@@ -610,7 +740,7 @@ class RobotApp(tk.Tk):
         snap = self.worker.snapshot()
         if not snap:
             return
-        self.calibration_deg_var.set(", ".join(f"{value:.3f}" for value in snap["joint_deg"]))
+        self.calibration_deg_var.set(", ".join(f"{value:.4f}" for value in snap["joint_deg"]))
 
     def _fill_current_joints(self) -> None:
         snap = self.worker.snapshot()
@@ -620,7 +750,87 @@ class RobotApp(tk.Tk):
         if len(values) != len(self.joint_vars):
             self._rebuild_joint_inputs(len(values))
         for var, value in zip(self.joint_vars, values):
-            var.set(f"{value:.3f}")
+            var.set(f"{value:.4f}")
+
+    def _set_joint_targets_deg(self, joints_deg: List[float]) -> None:
+        values = fit(joints_deg, len(self.joint_vars))
+        if self.manual_unit_var.get() == "rad":
+            values = [math.radians(value) for value in values]
+        for var, value in zip(self.joint_vars, values):
+            var.set(f"{value:.4f}")
+
+    def _configure_record_tree(self, count: int) -> None:
+        if not hasattr(self, "record_tree"):
+            return
+        columns = ["id"] + [f"j{i + 1}" for i in range(count)] + ["info"]
+        self.record_tree.configure(columns=columns)
+        self.record_tree.heading("id", text="ID")
+        self.record_tree.column("id", width=60, anchor=tk.CENTER, stretch=False)
+        for index in range(count):
+            key = f"j{index + 1}"
+            self.record_tree.heading(key, text=f"J{index + 1}")
+            self.record_tree.column(key, width=82, anchor=tk.E, stretch=False)
+        self.record_tree.heading("info", text="Info")
+        self.record_tree.column("info", width=160, anchor=tk.W, stretch=True)
+        self._refresh_record_tree()
+
+    def _refresh_record_tree(self) -> None:
+        if not hasattr(self, "record_tree"):
+            return
+        count = self.worker.joint_count()
+        self.record_tree.delete(*self.record_tree.get_children())
+        for point in self.recorded_points:
+            joints = fit(point.joints_deg, count)
+            values = [point.point_id] + [f"{value:.4f}" for value in joints] + [point.info]
+            self.record_tree.insert("", tk.END, values=values)
+
+    def _record_current_joints(self) -> None:
+        snap = self.worker.snapshot()
+        if not snap:
+            messagebox.showwarning("无法记录", "机器人未连接，暂无当前关节角。")
+            return
+        count = snap["joint_count"]
+        joints = fit(snap["joint_deg"], count)
+        point_id = str(self.record_next_id)
+        info = self.record_info_var.get().strip() or f"P{point_id}"
+        self.recorded_points.append(CsvPoint(point_id=point_id, joints_deg=joints, info=info))
+        self.record_next_id += 1
+        self.record_info_var.set("")
+        self._refresh_record_tree()
+        self._log(f"已记录当前关节角: ID={point_id}, Info={info}")
+
+    def _load_recorded_point(self, _event: object) -> None:
+        selected = self.record_tree.selection()
+        if not selected:
+            return
+        item = selected[0]
+        index = self.record_tree.index(item)
+        if not (0 <= index < len(self.recorded_points)):
+            return
+        point = self.recorded_points[index]
+        self._set_joint_targets_deg(point.joints_deg)
+        self._log(f"已加载记录点到 MoveJ 目标: ID={point.point_id}, Info={point.info}")
+
+    def _export_recorded_points(self) -> None:
+        if not self.recorded_points:
+            messagebox.showinfo("无可导出数据", "当前没有记录的关节角。")
+            return
+        count = self.worker.joint_count()
+        path = filedialog.asksaveasfilename(
+            title="导出记录关节角",
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+        )
+        if not path:
+            return
+        header = ["ID"] + [f"J{i + 1}" for i in range(count)] + ["Info"]
+        with open(path, "w", newline="", encoding="utf-8-sig") as handle:
+            writer = csv.writer(handle)
+            writer.writerow(header)
+            for point in self.recorded_points:
+                joints = fit(point.joints_deg, count)
+                writer.writerow([point.point_id] + [f"{value:.4f}" for value in joints] + [point.info])
+        self._log(f"已导出记录关节角 CSV: {path}")
 
     def _load_csv(self) -> None:
         path = filedialog.askopenfilename(
@@ -721,6 +931,20 @@ class RobotApp(tk.Tk):
             wait_done=self.wait_done_var.get(),
         )
 
+    def _load_csv_point_to_target(self, _event: object) -> None:
+        selected = self.csv_tree.selection()
+        if not selected:
+            return
+        children = list(self.csv_tree.get_children())
+        if selected[0] not in children:
+            return
+        index = children.index(selected[0])
+        if not (0 <= index < len(self.csv_points)):
+            return
+        point = self.csv_points[index]
+        self._set_joint_targets_deg(point.joints_deg)
+        self._log(f"已加载 CSV 点到 MoveJ 目标: ID={point.point_id}, Info={point.info}")
+
     def _enter_execute(self, _event: object) -> str:
         self._execute_next_csv_point()
         return "break"
@@ -729,22 +953,33 @@ class RobotApp(tk.Tk):
         snap = self.worker.snapshot()
         if snap:
             self.status_vars["connected"].set("已连接" if snap["connected"] else "未连接")
-            self.status_vars["power"].set(str(snap["power_on"]))
-            self.status_vars["moving"].set(str(snap["moving"]))
+            self.status_vars["power"].set("已使能" if snap["power_on"] else "未使能")
+            self.status_vars["moving"].set("运动中" if snap["moving"] else "静止")
             self.status_vars["mode"].set(str(snap["mode"]))
-            self.status_vars["error"].set(f"{snap['error']} / {snap['error_id']}")
+            self.status_vars["error"].set(f"异常 {snap['error_id']}" if snap["error"] else "正常")
+            self._set_status_light("connected", self.palette["green"] if snap["connected"] else self.palette["gray"])
+            self._set_status_light("power", self.palette["green"] if snap["power_on"] else self.palette["gray"])
+            self._set_status_light("moving", self.palette["amber"] if snap["moving"] else self.palette["gray"])
+            self._set_status_light("mode", self.palette["blue"] if snap["connected"] else self.palette["gray"])
+            self._set_status_light("error", self.palette["red"] if snap["error"] else self.palette["gray"])
             lines = [
                 f"joint_count={snap['joint_count']} init_complete={snap['init_complete']}",
-                f"关节角度(deg): [{format_numbers(snap['joint_deg'], 3)}]",
-                f"关节角度(rad): [{format_numbers(snap['joint_rad'], 6)}]",
-                f"关节速度(rad/s): [{format_numbers(snap['joint_vel'], 6)}]",
-                f"关节电流: [{format_numbers(snap['joint_current'], 6)}]",
+                f"关节角度(deg): [{format_numbers(snap['joint_deg'], 4)}]",
+                f"关节角度(rad): [{format_numbers(snap['joint_rad'], 4)}]",
+                f"关节速度(rad/s): [{format_numbers(snap['joint_vel'], 4)}]",
+                f"关节电流: [{format_numbers(snap['joint_current'], 4)}]",
             ]
             self._set_status_text("\n".join(lines))
             if len(self.joint_vars) != snap["joint_count"]:
                 self._rebuild_joint_inputs(snap["joint_count"])
         else:
             self.status_vars["connected"].set("未连接")
+            self.status_vars["power"].set("未使能")
+            self.status_vars["moving"].set("-")
+            self.status_vars["mode"].set("-")
+            self.status_vars["error"].set("-")
+            for key in ("connected", "power", "moving", "mode", "error"):
+                self._set_status_light(key, self.palette["gray"])
         self.after(500, self._refresh_status)
 
     def _set_status_text(self, text: str) -> None:
